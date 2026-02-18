@@ -1,23 +1,43 @@
-// swift-tools-version: 6.2
-// The swift-tools-version declares the minimum version of Swift required to build this package.
-
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
-    name: "MyLibrary",
+    name: "SwiftlyPDFKit",
+    platforms: [
+        .macOS(.v12),
+        .iOS(.v15),
+    ],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
-            name: "MyLibrary",
-            targets: ["MyLibrary"]
+            name: "SwiftlyPDFKit",
+            targets: ["SwiftlyPDFKit"]
+        ),
+        .executable(
+            name: "HelloWorldPDF",
+            targets: ["HelloWorldPDF"]
+        ),
+    ],
+    dependencies: [
+        .package(
+            url: "https://github.com/fwcd/swift-qrcode-generator.git",
+            from: "1.0.0"
         ),
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "MyLibrary"
+            name: "SwiftlyPDFKit",
+            dependencies: [
+                .product(name: "QRCodeGenerator", package: "swift-qrcode-generator"),
+            ],
+            path: "Sources/SwiftlyPDFKit",
+            linkerSettings: [
+                .linkedFramework("PDFKit", .when(platforms: [.macOS, .iOS])),
+            ]
         ),
-
+        .executableTarget(
+            name: "HelloWorldPDF",
+            dependencies: ["SwiftlyPDFKit"],
+            path: "Sources/HelloWorldPDF"
+        ),
     ]
 )
