@@ -91,7 +91,8 @@ let totalsStyle = TableStyle(
     rowHeight: 18,
     borderColor: PDFColor(white: 0.5),
     borderWidth: 0.5,
-    cellPadding: 4
+    cellPadding: 4,
+    cellBold: true
 )
 
 let detailStyle = TableStyle(
@@ -176,7 +177,7 @@ let pdf = PDF {
             Column("Totaal excl.", width: .fixed(90), alignment: .trailing, headerAlignment: .trailing)
         }
 
-        Spacer(height: 24)
+        Spacer(height: 120)
 
         // QR code + payment message
         Columns(spacing: 16) {
@@ -222,7 +223,7 @@ let pdf = PDF {
             Column("Te betalen",   width: .fixed(70), alignment: .trailing, headerAlignment: .center)
         }
 
-        Footer(height: 72) {
+        Footer(height: 84) {
             HRule(thickness: 0.5, color: PDFColor(white: 0.3))
             Spacer(height: 6)
             Text("T.F. Consult").font(.helvetica, size: 8).bold().alignment(.center)
@@ -274,15 +275,25 @@ let pdf = PDF {
 
         Table(data: detailLines, style: detailStyle) {
             Column("Omschrijving",   width: .flex,        alignment: .leading)
-            Column("Type prestatie", width: .fixed(200),  alignment: .leading)
-            Column("Datum",          width: .fixed(70),   alignment: .leading)
+            Column("Type prestatie", width: .fixed(175),  alignment: .leading)
+            Column("Datum",          width: .fixed(65),   alignment: .leading)
             Column("Getar",          width: .fixed(45),   alignment: .trailing, headerAlignment: .trailing)
         }
 
-        Footer(height: 30) {
+        Footer(height: 36) {
             HRule(thickness: 0.5, color: PDFColor(white: 0.4))
             Spacer(height: 4)
-            Text("- Bijlagen facturatie -").font(.helvetica, size: 9).alignment(.center)
+            Columns(spacing: 0) {
+                ColumnItem(width: .flex) {
+                    Spacer(height: 0)
+                }
+                ColumnItem(width: .fixed(200)) {
+                    Text("- Bijlagen facturatie -").font(.helvetica, size: 9).alignment(.center)
+                }
+                ColumnItem(width: .flex) {
+                    Text("1").font(.helvetica, size: 9).alignment(.trailing)
+                }
+            }
         }
     }
 }
