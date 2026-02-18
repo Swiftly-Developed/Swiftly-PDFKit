@@ -46,6 +46,24 @@ Sources/
 
 ## Coordinate system
 CoreGraphics PDFs have **origin at bottom-left**. The `cursor` variable tracks the current y-position starting from `bounds.maxY` (top of content area) and moves downward. Always pass `cursor` by `inout`.
+- To draw text: baseline = `cursor - ascent`; after drawing: `cursor = baseline - descent - leading`
+- Images: use `context.draw(cgImage, in: rect)` — no flip transform needed for PDF contexts
+
+## CoreText rendering
+- Build a `CFAttributedString` with a `CTParagraphStyle` for alignment.
+- Set paragraph alignment safely to avoid pointer lifetime warnings:
+  ```swift
+  let paraStyle: CTParagraphStyle = withUnsafeBytes(of: ctAlignment) { ptr in
+      var setting = CTParagraphStyleSetting(spec: .alignment, valueSize: MemoryLayout<CTTextAlignment>.size, value: ptr.baseAddress!)
+      return CTParagraphStyleCreate(&setting, 1)
+  }
+  ```
+- `CTLineGetTypographicBounds` returns the line width as its return value (not via pointer).
+
+## ContentBuilder result builder
+- `buildBlock` takes `[any PDFContent]...` (arrays), not `any PDFContent...` directly.
+- `buildExpression` wraps a single item: `(_ expression: any PDFContent) -> [any PDFContent]`.
+- This combination is required for `if/else`, `for`, and optional support to work correctly.
 
 ## Adding a new PDFContent type
 1. Create `Foo.swift` in `Sources/SwiftlyPDFKit/`
@@ -57,12 +75,17 @@ CoreGraphics PDFs have **origin at bottom-left**. The `cursor` variable tracks t
 - **No CoreImage** — not available on Linux. QR codes use `swift-qrcode-generator` (pure Swift).
 - **No AppKit/UIKit** — `NSAttributedString.Key.font` etc. are not available. Use CoreText CF attribute keys (`kCTFontAttributeName`, `kCTForegroundColorAttributeName`, `kCTParagraphStyleAttributeName`).
 - `CFAttributedStringCreate` instead of `NSAttributedString` for attributed strings.
+- `CGColor(gray:alpha:)` is fine everywhere; `CGColor.white` class var conflicts with `PDFColor.white` — always use `PDFColor.white` explicitly (not `.white` shorthand) when the overload accepts both types.
 
 ## Build & run
 ```bash
 swift build
 swift run HelloWorldPDF        # generates Invoice-20260114.pdf in cwd
 ```
+
+## Git / GitHub
+- Repo is local only — do **not** push to remote unless explicitly asked.
+- GitHub account: VanAkenBen; `gh` CLI is authenticated (scopes: repo, workflow, project).
 
 ## Dependencies
 - [`swift-qrcode-generator`](https://github.com/fwcd/swift-qrcode-generator) `~> 1.0` — pure Swift QR encoder
