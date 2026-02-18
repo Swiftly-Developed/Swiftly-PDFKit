@@ -49,6 +49,8 @@ public struct TableStyle: Sendable {
     public var borderColor: CGColor
     public var borderWidth: CGFloat
     public var cellPadding: CGFloat
+    /// When true, data cells are rendered in bold.
+    public var cellBold: Bool
 
     public static let `default` = TableStyle(
         headerBackground: CGColor(gray: 0.85, alpha: 1),
@@ -59,7 +61,8 @@ public struct TableStyle: Sendable {
         alternateRowColor: nil,
         borderColor: CGColor(gray: 0.7, alpha: 1),
         borderWidth: 0.25,
-        cellPadding: 4
+        cellPadding: 4,
+        cellBold: false
     )
 
     public init(
@@ -71,7 +74,8 @@ public struct TableStyle: Sendable {
         alternateRowColor: CGColor? = nil,
         borderColor: CGColor = CGColor(gray: 0.7, alpha: 1),
         borderWidth: CGFloat = 0.25,
-        cellPadding: CGFloat = 4
+        cellPadding: CGFloat = 4,
+        cellBold: Bool = false
     ) {
         self.headerBackground = headerBackground
         self.headerTextColor = headerTextColor
@@ -82,6 +86,7 @@ public struct TableStyle: Sendable {
         self.borderColor = borderColor
         self.borderWidth = borderWidth
         self.cellPadding = cellPadding
+        self.cellBold = cellBold
     }
 
     /// PDFColor convenience initialiser — no CoreGraphics import needed in call sites.
@@ -94,7 +99,8 @@ public struct TableStyle: Sendable {
         alternateRowColor: PDFColor? = nil,
         borderColor: PDFColor = PDFColor(white: 0.7),
         borderWidth: CGFloat = 0.25,
-        cellPadding: CGFloat = 4
+        cellPadding: CGFloat = 4,
+        cellBold: Bool = false
     ) {
         self.headerBackground = headerBackground.cgColor
         self.headerTextColor = headerTextColor.cgColor
@@ -105,6 +111,7 @@ public struct TableStyle: Sendable {
         self.borderColor = borderColor.cgColor
         self.borderWidth = borderWidth
         self.cellPadding = cellPadding
+        self.cellBold = cellBold
     }
 }
 
@@ -167,7 +174,7 @@ public struct Table: PDFContent {
                 y: cursor,
                 rowHeight: style.rowHeight,
                 fontSize: style.cellFontSize,
-                bold: false,
+                bold: style.cellBold,
                 textColor: CGColor(gray: 0, alpha: 1),
                 background: bg
             )
