@@ -61,6 +61,21 @@ Sources/
   - `logoPosition`: `.left` (default), `.right`, `.topCenter`
 - `InvoiceLayoutType`: `.classic` (only fully-implemented layout; `.classicWithSidebar` and `.minimal` are stubs)
 
+## Multi-page invoice layout
+`classicLayout` automatically splits invoices across as many pages as needed:
+- **Two-pass algorithm**: Pass 1 fills pages with as many rows as fit (ignoring bottom content). Pass 2 checks whether totals+notes+payment fit after the last row chunk; if not, an empty overflow page is appended.
+- **Page 1** overhead is estimated from `logoMaxHeight + 13 + 52` (logo col) + spacers + meta block (~80 pt).
+- **Continuation pages** start fresh at the top with only the table header row repeated.
+- **Last page** renders totals, optional notes, and optional payment/QR section.
+- **Footer** (`InvoiceFooter`) is emitted on every page via a shared `makeFooter()` helper.
+- The empty-chunk overflow page emits just the bottom content — no rows, no table header.
+
+## Number formatting (`InvoiceFormatter`)
+- `amount(_:)` — 2 decimal places, thousands grouped (e.g. `1,200.00`, `43,752.00`). Uses a shared `NumberFormatter` with `.decimal` style and `usesGroupingSeparator = true`.
+- `quantity(_:)` — 0–2 decimal places, thousands grouped. Trailing zeros trimmed.
+- `percent(_:)` — plain `String(format:)` with `%%`; no grouping (values are always small).
+- Both formatters are `static let` on `InvoiceFormatter` — created once, reused across all render calls.
+
 ## Coordinate system
 CoreGraphics PDFs have **origin at bottom-left**. The `cursor` variable tracks the current y-position starting from `bounds.maxY` (top of content area) and moves downward. Always pass `cursor` by `inout`.
 - To draw text: baseline = `cursor - ascent`; after drawing: `cursor = baseline - descent - leading`
