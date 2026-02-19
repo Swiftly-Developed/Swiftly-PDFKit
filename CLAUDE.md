@@ -8,7 +8,7 @@ A Swift DSL for generating PDFs using result builders, inspired by SwiftUI's dec
 Sources/
 ├── SwiftlyPDFKit/      # Core PDF generation library (cross-platform)
 ├── SwiftlyPDFKitUI/    # SwiftUI bridge — PDFPreviewView (macOS/iOS only)
-└── DemoPDFKit/         # Dynamic library: 7 classic invoice demos + Xcode #Preview blocks
+└── DemoPDFKit/         # Dynamic library: 11 invoice demos + Xcode #Preview blocks
 ```
 
 ## Package products
@@ -59,16 +59,25 @@ Sources/
   - `totals` defaults to `InvoiceTotals(lines:)` — omit unless overriding (e.g. partial payment / deposit)
 - `InvoiceTheme` — colors, fonts, logo position, row heights; built-in presets: `.standard`, `.gold`, `.corporate`
   - `logoPosition`: `.left` (default), `.right`, `.topCenter`
-- `InvoiceLayoutType`: `.classic` (only fully-implemented layout; `.classicWithSidebar` and `.minimal` are stubs)
+- `InvoiceLayoutType`: five fully-implemented layouts:
+  - `.classic` — two-column header (logo + supplier / client), meta block, table, totals
+  - `.classicWithSidebar` — classic with a 14pt accent `FilledBox` bar on the full left edge of every page
+  - `.minimal` — borderless table, no header background, plain-text totals via `Columns` rows, airy 22pt row height
+  - `.stacked` — full-width accent banner title, supplier centred, client below HRule, light-tint meta strip; compact repeat header on continuation pages
+  - `.summaryFirst` — page 1 shows header + meta + totals + payment only; line items start on page 2
 
 ## Multi-page invoice layout
-`classicLayout` automatically splits invoices across as many pages as needed:
+`classicLayout` (and `classicWithSidebarLayout`, `minimalLayout`, `stackedLayout`) automatically split invoices:
 - **Two-pass algorithm**: Pass 1 fills pages with as many rows as fit (ignoring bottom content). Pass 2 checks whether totals+notes+payment fit after the last row chunk; if not, an empty overflow page is appended.
 - **Page 1** overhead is estimated from `logoMaxHeight + 13 + 52` (logo col) + spacers + meta block (~80 pt).
 - **Continuation pages** start fresh at the top with only the table header row repeated.
 - **Last page** renders totals, optional notes, and optional payment/QR section.
-- **Footer** (`InvoiceFooter`) is emitted on every page via a shared `makeFooter()` helper.
+- **Footer** (`InvoiceFooter`) is emitted on every page via a local `makeFooter()` closure.
 - The empty-chunk overflow page emits just the bottom content — no rows, no table header.
+
+`summaryFirstLayout` uses a different structure:
+- **Page 1** always contains only header + meta + totals + notes + payment (no line items).
+- **Pages 2+** contain only line items, paginated using `contRowsMax` rows per page.
 
 ## Number formatting (`InvoiceFormatter`)
 - `amount(_:)` — 2 decimal places, thousands grouped (e.g. `1,200.00`, `43,752.00`). Uses a shared `NumberFormatter` with `.decimal` style and `usesGroupingSeparator = true`.
@@ -139,13 +148,17 @@ Defined in `Sources/SwiftlyPDFKitUI/PDFPreviewView.swift`. Wraps a `PDFView` (PD
 ```
 Sources/DemoPDFKit/
 ├── Shared.swift                — logo path, shared fixtures (supplier/client/lines/footer/QR), invoicePreview()
-├── Demo01_Standard.swift       — Standard theme · logo left · QR            #Preview "01 · Standard"
-├── Demo02_Gold.swift           — Gold theme · logo left · no QR             #Preview "02 · Gold"
-├── Demo03_Corporate.swift      — Corporate theme · QR + notes + service date #Preview "03 · Corporate"
-├── Demo04_Purple.swift         — Purple serif · logo right · licence lines  #Preview "04 · Purple · Logo Right"
-├── Demo05_Green.swift          — Green eco · logo top-center · no footer    #Preview "05 · Green · Top Center"
-├── Demo06_PartialPayment.swift — Standard · deposit / partial payment       #Preview "06 · Partial Payment"
-└── Demo07_Mono.swift           — Courier mono · Letter size · zero VAT      #Preview "07 · Mono · Letter"
+├── Demo01_Standard.swift       — .classic · Standard theme · logo left · QR              #Preview "01 · Standard"
+├── Demo02_Gold.swift           — .classic · Gold theme · logo left · no QR               #Preview "02 · Gold"
+├── Demo03_Corporate.swift      — .classic · Corporate theme · QR + notes + service date  #Preview "03 · Corporate"
+├── Demo04_Purple.swift         — .classic · Purple serif · logo right · licence lines    #Preview "04 · Purple · Logo Right"
+├── Demo05_Green.swift          — .classic · Green eco · logo top-center · no footer      #Preview "05 · Green · Top Center"
+├── Demo06_PartialPayment.swift — .classic · Standard · deposit / partial payment         #Preview "06 · Partial Payment"
+├── Demo07_Mono.swift           — .classic · Courier mono · Letter size · zero VAT        #Preview "07 · Mono · Letter"
+├── Demo08_Sidebar.swift        — .classicWithSidebar · Corporate theme · blue sidebar    #Preview "08 · Classic + Sidebar"
+├── Demo09_Minimal.swift        — .minimal · Standard theme · 5 lines · notes             #Preview "09 · Minimal"
+├── Demo10_Stacked.swift        — .stacked · custom teal theme                            #Preview "10 · Stacked"
+└── Demo11_SummaryFirst.swift   — .summaryFirst · Gold theme · full demoLines             #Preview "11 · Summary First"
 ```
 
 ## Build
