@@ -31,6 +31,12 @@ public struct PDF {
         self.pages = content()
     }
 
+    /// Initialises a `PDF` from an already-built array of pages.
+    /// Useful when pages are constructed programmatically (e.g. in preview helpers).
+    public init(pages: [Page]) {
+        self.pages = pages
+    }
+
     // MARK: Rendering
 
     /// Renders all pages and returns the PDF as `Data`.
