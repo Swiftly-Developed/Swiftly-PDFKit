@@ -6,17 +6,24 @@ A Swift DSL for generating PDFs using result builders, inspired by SwiftUI's dec
 ## Package structure
 ```
 Sources/
-├── SwiftlyPDFKit/          # Core PDF generation library (cross-platform)
-├── SwiftlyPDFKitUI/        # SwiftUI bridge — PDFPreviewView (macOS/iOS only)
-├── SwiftlyPDFKitPreviews/  # Xcode canvas #Preview blocks (macOS/iOS only)
-└── HelloWorldPDF/          # Example executable (invoice + DSL demo)
+├── SwiftlyPDFKit/      # Core PDF generation library (cross-platform)
+├── SwiftlyPDFKitUI/    # SwiftUI bridge — PDFPreviewView (macOS/iOS only)
+└── DemoPDFKit/         # Dynamic library: 7 classic invoice demos + Xcode #Preview blocks
 ```
+
+## Package products
+| Product | Type | Platforms |
+|---|---|---|
+| `SwiftlyPDFKit` | static library | macOS, iOS, Linux |
+| `SwiftlyPDFKitUI` | static library | macOS, iOS |
+| `DemoPDFKit` | **dynamic** library | macOS, iOS |
 
 ## Key DSL types
 
 ### Entry point
 - `PDF { Page... }` — top-level document; `.render() -> Data`, `.write(to: URL)`
 - `PDF(pages: [Page])` — convenience init from a pre-built array (used internally by `PDFPreviewView`)
+- `PDF(layout:invoice:theme:pageSize:)` — builds an invoice page from an `InvoiceDocument` model
 
 ### Page
 - `Page(size: .a4/.letter/.legal, margins: CGFloat) { content... }`
@@ -46,6 +53,13 @@ Sources/
 - `Table(data: [[String]], style: TableStyle, showHeader: Bool) { Column... }`
 - `Column(_ header: String, width: .flex/.fixed(n), alignment:, headerAlignment:)`
 - `TableStyle` — configures header bg, text colors, font sizes, row height, border, padding; has both `CGColor` and `PDFColor` initialisers
+
+## Invoice model
+- `InvoiceDocument(header:supplier:client:lines:totals:footer:)` — full data model
+  - `totals` defaults to `InvoiceTotals(lines:)` — omit unless overriding (e.g. partial payment / deposit)
+- `InvoiceTheme` — colors, fonts, logo position, row heights; built-in presets: `.standard`, `.gold`, `.corporate`
+  - `logoPosition`: `.left` (default), `.right`, `.topCenter`
+- `InvoiceLayoutType`: `.classic` (only fully-implemented layout; `.classicWithSidebar` and `.minimal` are stubs)
 
 ## Coordinate system
 CoreGraphics PDFs have **origin at bottom-left**. The `cursor` variable tracks the current y-position starting from `bounds.maxY` (top of content area) and moves downward. Always pass `cursor` by `inout`.
@@ -80,47 +94,52 @@ CoreGraphics PDFs have **origin at bottom-left**. The `cursor` variable tracks t
 - `CFAttributedStringCreate` instead of `NSAttributedString` for attributed strings.
 - `CGColor(gray:alpha:)` is fine everywhere; `CGColor.white` class var conflicts with `PDFColor.white` — always use `PDFColor.white` explicitly (not `.white` shorthand) when the overload accepts both types.
 
-## SwiftUI preview support (SwiftlyPDFKitUI + SwiftlyPDFKitPreviews)
+## SwiftUI preview support
 
-### PDFPreviewView
+### PDFPreviewView (SwiftlyPDFKitUI)
 Defined in `Sources/SwiftlyPDFKitUI/PDFPreviewView.swift`. Wraps a `PDFView` (PDFKit) in a SwiftUI view.
 - Import `SwiftlyPDFKitUI` to use it.
 - Whole file is `#if canImport(SwiftUI) && canImport(PDFKit)` guarded — safe on Linux.
 - `PDFKitBridgeView` is `internal`; uses `UIViewRepresentable` on iOS, `NSViewRepresentable` on macOS.
+- Two initialisers:
+  ```swift
+  // DSL page builder
+  PDFPreviewView {
+      Page(size: .a4) { Text("Hello").font(.helvetica, size: 24).bold() }
+  }
 
-```swift
-PDFPreviewView {
-    Page(size: .a4) {
-        Text("Hello").font(.helvetica, size: 24).bold()
-    }
-}
+  // Pre-built PDF (e.g. from PDF(layout:invoice:))
+  PDFPreviewView(pdf)
+  ```
+
+### #Preview blocks (DemoPDFKit)
+`#Preview` blocks live **inside `Sources/DemoPDFKit/`** alongside the demo data — no separate Previews target.
+- `DemoPDFKit` is declared as a **dynamic library** product (`type: .dynamic`) — required for Xcode canvas.
+- Uses `@available(macOS 14, iOS 17, *)` on all `#Preview` blocks (traits API requirement).
+- All module-level globals (`invoice`, `pdf`, `theme`, `lines`, etc.) must be `@MainActor` — Swift 6 strict
+  concurrency requires this because `PDF`, `Page`, and `[any PDFContent]` are not `Sendable`.
+- Use `traits: .fixedLayout(width:height:)` matching the page size (595×842 A4, 612×792 Letter).
+
+#### DemoPDFKit file layout
+```
+Sources/DemoPDFKit/
+├── Shared.swift                — logo path, shared fixtures (supplier/client/lines/footer/QR), invoicePreview()
+├── Demo01_Standard.swift       — Standard theme · logo left · QR            #Preview "01 · Standard"
+├── Demo02_Gold.swift           — Gold theme · logo left · no QR             #Preview "02 · Gold"
+├── Demo03_Corporate.swift      — Corporate theme · QR + notes + service date #Preview "03 · Corporate"
+├── Demo04_Purple.swift         — Purple serif · logo right · licence lines  #Preview "04 · Purple · Logo Right"
+├── Demo05_Green.swift          — Green eco · logo top-center · no footer    #Preview "05 · Green · Top Center"
+├── Demo06_PartialPayment.swift — Standard · deposit / partial payment       #Preview "06 · Partial Payment"
+└── Demo07_Mono.swift           — Courier mono · Letter size · zero VAT      #Preview "07 · Mono · Letter"
 ```
 
-### #Preview blocks (SwiftlyPDFKitPreviews)
-Defined in `Sources/SwiftlyPDFKitPreviews/Previews.swift`.
-- Declared as a **dynamic library** product (`type: .dynamic`) — required for Xcode canvas support.
-- Uses `@available(macOS 14, iOS 17, *)` on all `#Preview` blocks (traits API requirement).
-- `@MainActor` required on any `var` that constructs `PDFPreviewView`.
-- **To see bare PDF with no device chrome**: use `traits: .sizeThatFitsLayout` and switch run destination to **My Mac** in Xcode. With an iPhone/iPad simulator destination `.sizeThatFitsLayout` still shows a device bezel.
-- **Bare fixed-size window**: `traits: .fixedLayout(width:height:)` on My Mac destination.
-- **iPhone bezel**: `traits: .portrait` with an iPhone simulator destination.
-- Canvas only works in **Selectable mode** (cursor icon at canvas bottom-left) for `.sizeThatFitsLayout`.
-
-### Package products
-| Product | Type | Platforms |
-|---|---|---|
-| `SwiftlyPDFKit` | static library | macOS, iOS, Linux |
-| `SwiftlyPDFKitUI` | static library | macOS, iOS |
-| `SwiftlyPDFKitPreviews` | **dynamic** library | macOS, iOS |
-
-## Build & run
+## Build
 ```bash
 swift build
-swift run HelloWorldPDF   # writes Invoice-Model-Demo.pdf + HelloWorld-DSL-Demo.pdf to cwd
 ```
 
 ## Git / GitHub
-- Repo is local only — do **not** push to remote unless explicitly asked.
+- Remote: `https://github.com/Swiftly-Developed/Swiftly-PDFKit.git`
 - GitHub account: VanAkenBen; `gh` CLI is authenticated (scopes: repo, workflow, project).
 
 ## Dependencies
