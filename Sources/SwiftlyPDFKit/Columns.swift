@@ -18,6 +18,12 @@ public struct ColumnItem {
 @resultBuilder
 public struct ColumnsBuilder {
     public static func buildBlock(_ items: ColumnItem...) -> [ColumnItem] { items }
+    public static func buildOptional(_ items: [ColumnItem]?) -> [ColumnItem] { items ?? [] }
+    public static func buildEither(first items: [ColumnItem]) -> [ColumnItem] { items }
+    public static func buildEither(second items: [ColumnItem]) -> [ColumnItem] { items }
+    public static func buildArray(_ items: [[ColumnItem]]) -> [ColumnItem] { items.flatMap { $0 } }
+    public static func buildExpression(_ item: ColumnItem) -> [ColumnItem] { [item] }
+    public static func buildBlock(_ items: [ColumnItem]...) -> [ColumnItem] { items.flatMap { $0 } }
 }
 
 // MARK: - Columns
