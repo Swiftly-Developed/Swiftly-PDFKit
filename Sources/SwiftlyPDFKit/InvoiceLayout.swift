@@ -71,53 +71,147 @@ enum InvoiceLayoutBuilder {
     ) -> PDF {
         let fmt = InvoiceFormatter(theme: theme)
 
-        return PDF {
-            Page(size: pageSize, margins: theme.pageMargins) {
+        // ── Height accounting ──────────────────────────────────────────────
+        let rowH = theme.lineItemRowHeight
 
-                // ── Header: logo + supplier / client address ──────────────────
+        // Page 1 overhead: logo/address block + spacer + meta block + spacer.
+        // logo column height: logoMaxHeight + spacer(6) + HRule(1) + spacer(6) +
+        //   supplier name + up to 3 address lines ≈ logoMaxHeight + 13 + 4×13
+        let headerHeight:  CGFloat = theme.logoMaxHeight + 13 + 52   // generous but accurate
+        let metaHeight:    CGFloat = 80   // 5–6 label rows at ~13 pt each
+        let page1Overhead: CGFloat = headerHeight + 20 + metaHeight + 20
+
+        // Table header row (repeated on every page).
+        let tableHeaderH:  CGFloat = rowH
+
+        // Bottom content reserved on the last page: totals + optional notes + payment.
+        let totalsRowCount   = (invoice.totals.amountPaid ?? 0) > 0 ? 5 : 4
+        let totalsH:         CGFloat = CGFloat(totalsRowCount) * theme.totalsRowHeight + 12
+        let notesH:          CGFloat = invoice.header.notes != nil ? 20 + 14 : 0
+        let paymentH:        CGFloat = (invoice.header.qrPayload != nil ||
+                                        invoice.header.paymentReference != nil) ? 16 + 80 : 0
+        let lastPageBottomH: CGFloat = totalsH + notesH + paymentH
+
+        let footerH: CGFloat = invoice.footer.map { $0.height } ?? 0
+        let margins          = theme.pageMargins
+        let bodyH            = pageSize.height - margins * 2 - footerH
+
+        // Max rows that fit on each page type, *ignoring* the bottom content.
+        // We handle bottom-content fit in a second pass below.
+        let p1RowsMax   = max(1, Int(floor((bodyH - page1Overhead - tableHeaderH) / rowH)))
+        let contRowsMax = max(1, Int(floor((bodyH - tableHeaderH) / rowH)))
+
+        // ── Pass 1: split lines into page chunks (rows only, no bottom content) ──
+        var chunks: [[InvoiceLine]] = []
+        var remaining = invoice.lines
+
+        let p1Take = min(p1RowsMax, remaining.count)
+        chunks.append(Array(remaining.prefix(p1Take)))
+        remaining = Array(remaining.dropFirst(p1Take))
+
+        while !remaining.isEmpty {
+            let take = min(contRowsMax, remaining.count)
+            chunks.append(Array(remaining.prefix(take)))
+            remaining = Array(remaining.dropFirst(take))
+        }
+
+        // ── Pass 2: check if bottom content fits after the last chunk ─────────
+        // Compute how much space the last chunk's rows actually use.
+        let lastChunkUsed: CGFloat
+        if let last = chunks.last {
+            let isFirstPage = chunks.count == 1
+            let overhead    = isFirstPage ? page1Overhead : 0
+            lastChunkUsed   = overhead + tableHeaderH + CGFloat(last.count) * rowH
+        } else {
+            lastChunkUsed = page1Overhead + tableHeaderH
+        }
+        // If the bottom content doesn't fit on the last chunk's page, add an empty
+        // overflow chunk so the page loop emits a dedicated totals-only page.
+        let lastPageBodyH = chunks.count == 1 ? bodyH : bodyH
+        if lastChunkUsed + lastPageBottomH > lastPageBodyH {
+            chunks.append([])   // empty chunk → page with only bottom content
+        }
+
+        // ── Page builder ───────────────────────────────────────────────────
+        func makeFooter() -> Footer? {
+            guard let invoiceFooter = invoice.footer else { return nil }
+            return Footer(height: invoiceFooter.height) {
+                HRule(thickness: 0.5, color: theme.ruleColor)
+                Spacer(height: 4)
+                for line in invoiceFooter.lines {
+                    Text(line)
+                        .font(theme.bodyFont, size: 8)
+                        .alignment(.center)
+                }
+            }
+        }
+
+        var pages: [Page] = []
+
+        for (pageIdx, chunk) in chunks.enumerated() {
+            let isFirst = pageIdx == 0
+            let isLast  = pageIdx == chunks.count - 1
+
+            let page = Page(size: pageSize, margins: margins) {
+
+                if isFirst {
+                    // ── Header ────────────────────────────────────────────
+                    headerSection(invoice: invoice, theme: theme, fmt: fmt)
+                    Spacer(height: 20)
+                    // ── Meta ──────────────────────────────────────────────
+                    metaSection(invoice: invoice, theme: theme, fmt: fmt)
+                    Spacer(height: 20)
+                }
+
+                // ── Line items (this page's chunk) ─────────────────────
+                lineItemsTableForRows(chunk, invoice: invoice, theme: theme, fmt: fmt,
+                                      showHeader: true)
+
+                if isLast {
+                    Spacer(height: 12)
+                    // ── Totals ────────────────────────────────────────────
+                    totalsTable(invoice: invoice, theme: theme, fmt: fmt)
+
+                    // ── Notes ─────────────────────────────────────────────
+                    if let notes = invoice.header.notes {
+                        Spacer(height: 12)
+                        Text(notes).font(theme.bodyFont, size: theme.bodyFontSize - 1)
+                    }
+
+                    // ── QR code + payment reference ───────────────────────
+                    if invoice.header.qrPayload != nil || invoice.header.paymentReference != nil {
+                        Spacer(height: 16)
+                        paymentSection(invoice: invoice, theme: theme, fmt: fmt)
+                    }
+                }
+
+                if let f = makeFooter() { f }
+            }
+            pages.append(page)
+        }
+
+        // Edge-case: no lines at all — emit a single page with just header/meta/totals.
+        if pages.isEmpty {
+            let page = Page(size: pageSize, margins: margins) {
                 headerSection(invoice: invoice, theme: theme, fmt: fmt)
-
                 Spacer(height: 20)
-
-                // ── Invoice meta: number, dates, document title ───────────────
                 metaSection(invoice: invoice, theme: theme, fmt: fmt)
-
                 Spacer(height: 20)
-
-                // ── Line items table ──────────────────────────────────────────
-                lineItemsTable(invoice: invoice, theme: theme, fmt: fmt)
-
-                Spacer(height: 12)
-
-                // ── Totals ────────────────────────────────────────────────────
                 totalsTable(invoice: invoice, theme: theme, fmt: fmt)
-
-                // ── Notes ─────────────────────────────────────────────────────
                 if let notes = invoice.header.notes {
                     Spacer(height: 12)
                     Text(notes).font(theme.bodyFont, size: theme.bodyFontSize - 1)
                 }
-
-                // ── QR code + payment reference ───────────────────────────────
                 if invoice.header.qrPayload != nil || invoice.header.paymentReference != nil {
                     Spacer(height: 16)
                     paymentSection(invoice: invoice, theme: theme, fmt: fmt)
                 }
-
-                // ── Footer ────────────────────────────────────────────────────
-                if let invoiceFooter = invoice.footer {
-                    Footer(height: invoiceFooter.height) {
-                        HRule(thickness: 0.5, color: theme.ruleColor)
-                        Spacer(height: 4)
-                        for line in invoiceFooter.lines {
-                            Text(line)
-                                .font(theme.bodyFont, size: 8)
-                                .alignment(.center)
-                        }
-                    }
-                }
+                if let f = makeFooter() { f }
             }
+            pages.append(page)
         }
+
+        return PDF(pages: pages)
     }
 
     // MARK: - Section builders
@@ -266,7 +360,17 @@ enum InvoiceLayoutBuilder {
         theme: InvoiceTheme,
         fmt: InvoiceFormatter
     ) -> some PDFContent {
-        let rows = invoice.lines.map { line -> [String] in
+        lineItemsTableForRows(invoice.lines, invoice: invoice, theme: theme, fmt: fmt, showHeader: true)
+    }
+
+    private static func lineItemsTableForRows(
+        _ lines: [InvoiceLine],
+        invoice: InvoiceDocument,
+        theme: InvoiceTheme,
+        fmt: InvoiceFormatter,
+        showHeader: Bool
+    ) -> some PDFContent {
+        let rows = lines.map { line -> [String] in
             let qty       = fmt.quantity(line.quantity)
             let unitPrice = fmt.amount(line.unitPrice)
             let discount  = line.discountPercent > 0 ? fmt.percent(line.discountPercent) : ""
@@ -287,7 +391,7 @@ enum InvoiceLayoutBuilder {
             cellPadding:      4
         )
 
-        return Table(data: rows, style: lineStyle) {
+        return Table(data: rows, style: lineStyle, showHeader: showHeader) {
             Column("Description",  width: .flex,        alignment: .leading)
             Column("Qty",          width: .fixed(40),   alignment: .trailing, headerAlignment: .trailing)
             Column("Unit Price",   width: .fixed(65),   alignment: .trailing, headerAlignment: .trailing)
@@ -469,16 +573,32 @@ enum InvoiceLayoutBuilder {
 struct InvoiceFormatter {
     let theme: InvoiceTheme
 
+    private static let amountFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 2
+        f.maximumFractionDigits = 2
+        f.usesGroupingSeparator = true
+        return f
+    }()
+
+    private static let quantityFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 0
+        f.maximumFractionDigits = 2
+        f.usesGroupingSeparator = true
+        return f
+    }()
+
     func label(_ text: String) -> String { text }
 
     func amount(_ value: Double) -> String {
-        String(format: "%.2f", value)
+        Self.amountFormatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
     }
 
     func quantity(_ value: Double) -> String {
-        value.truncatingRemainder(dividingBy: 1) == 0
-            ? String(format: "%.0f", value)
-            : String(format: "%.2f", value)
+        Self.quantityFormatter.string(from: NSNumber(value: value)) ?? String(format: value.truncatingRemainder(dividingBy: 1) == 0 ? "%.0f" : "%.2f", value)
     }
 
     func percent(_ value: Double) -> String {
