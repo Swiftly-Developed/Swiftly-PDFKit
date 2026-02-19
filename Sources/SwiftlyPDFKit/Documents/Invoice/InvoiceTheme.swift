@@ -201,3 +201,7 @@ public struct InvoiceTheme: Sendable {
         self.totalsRowHeight = totalsRowHeight
     }
 }
+
+/// `DocumentTheme` is a synonym for `InvoiceTheme`.
+/// Use either name; they are fully interchangeable.
+public typealias DocumentTheme = InvoiceTheme

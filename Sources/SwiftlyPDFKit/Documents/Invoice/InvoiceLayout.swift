@@ -229,7 +229,7 @@ enum InvoiceLayoutBuilder {
 
     // MARK: - Section builders
 
-    private static func headerSection(
+    static func headerSection(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
         fmt: InvoiceFormatter
@@ -285,7 +285,7 @@ enum InvoiceLayoutBuilder {
         }
     }
 
-    private static func metaSection(
+    static func metaSection(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
         fmt: InvoiceFormatter
@@ -368,7 +368,7 @@ enum InvoiceLayoutBuilder {
         }
     }
 
-    private static func lineItemsTable(
+    static func lineItemsTable(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
         fmt: InvoiceFormatter
@@ -376,7 +376,7 @@ enum InvoiceLayoutBuilder {
         lineItemsTableForRows(invoice.lines, invoice: invoice, theme: theme, fmt: fmt, showHeader: true)
     }
 
-    private static func lineItemsTableForRows(
+    static func lineItemsTableForRows(
         _ lines: [InvoiceLine],
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
@@ -414,7 +414,7 @@ enum InvoiceLayoutBuilder {
         }
     }
 
-    private static func totalsTable(
+    static func totalsTable(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
         fmt: InvoiceFormatter
@@ -458,7 +458,7 @@ enum InvoiceLayoutBuilder {
         }
     }
 
-    private static func paymentSection(
+    static func paymentSection(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
         fmt: InvoiceFormatter
@@ -502,7 +502,7 @@ enum InvoiceLayoutBuilder {
 
     // MARK: - Reusable sub-blocks
 
-    private static func logoOrFallback(
+    static func logoOrFallback(
         supplier: InvoiceSupplier,
         theme: InvoiceTheme,
         alignment: TextAlignment = .leading
@@ -524,7 +524,7 @@ enum InvoiceLayoutBuilder {
             .alignment(alignment)
     }
 
-    private static func supplierBlock(
+    static func supplierBlock(
         supplier: InvoiceSupplier,
         theme: InvoiceTheme,
         fmt: InvoiceFormatter,
@@ -549,7 +549,7 @@ enum InvoiceLayoutBuilder {
         }
     }
 
-    private static func clientBlock(
+    static func clientBlock(
         client: InvoiceClient,
         theme: InvoiceTheme,
         fmt: InvoiceFormatter
@@ -1100,7 +1100,7 @@ enum InvoiceLayoutBuilder {
     }
 
     /// Renders the invoice number, dates, and currency as a compact filled banner strip.
-    private static func stackedMetaBanner(
+    static func stackedMetaBanner(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
         fmt: InvoiceFormatter,
