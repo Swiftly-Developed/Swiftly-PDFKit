@@ -12,6 +12,15 @@ let package = Package(
             name: "SwiftlyPDFKit",
             targets: ["SwiftlyPDFKit"]
         ),
+        .library(
+            name: "SwiftlyPDFKitUI",
+            targets: ["SwiftlyPDFKitUI"]
+        ),
+        .library(
+            name: "SwiftlyPDFKitPreviews",
+            type: .dynamic,
+            targets: ["SwiftlyPDFKitPreviews"]
+        ),
         .executable(
             name: "HelloWorldPDF",
             targets: ["HelloWorldPDF"]
@@ -32,6 +41,22 @@ let package = Package(
             path: "Sources/SwiftlyPDFKit",
             linkerSettings: [
                 .linkedFramework("PDFKit", .when(platforms: [.macOS, .iOS])),
+            ]
+        ),
+        .target(
+            name: "SwiftlyPDFKitUI",
+            dependencies: ["SwiftlyPDFKit"],
+            path: "Sources/SwiftlyPDFKitUI",
+            linkerSettings: [
+                .linkedFramework("PDFKit", .when(platforms: [.macOS, .iOS])),
+            ]
+        ),
+        .target(
+            name: "SwiftlyPDFKitPreviews",
+            dependencies: ["SwiftlyPDFKit", "SwiftlyPDFKitUI"],
+            path: "Sources/SwiftlyPDFKitPreviews",
+            swiftSettings: [
+                .unsafeFlags(["-enable-testing"]),
             ]
         ),
         .executableTarget(
