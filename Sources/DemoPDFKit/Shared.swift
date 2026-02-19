@@ -203,3 +203,36 @@ func invoicePreview(_ pdf: PDF) -> some View {
     PDFPreviewView(pdf)
         .frame(width: 595, height: 842)
 }
+
+// MARK: - Shared fixtures for new document types
+
+/// Short line list (first 6 items) — suitable for single-page docs.
+@MainActor let demoShortLines: [InvoiceLine] = Array(demoLines.prefix(6))
+
+/// Quote supplement fixture: valid 30 days, with acceptance note.
+@MainActor let demoQuoteSupplement = QuoteSupplement(
+    expiryDate: "2026-03-31",
+    acceptanceNote: "Please sign and return to confirm acceptance of this quotation. By signing you agree to the terms and conditions on our website."
+)
+
+/// Sales order supplement fixture.
+@MainActor let demoSalesOrderSupplement = SalesOrderSupplement(
+    poConfirmedDate: "2026-02-18",
+    requestedDeliveryDate: "2026-03-15"
+)
+
+/// Delivery supplement fixture: separate ship-to address, signature required.
+@MainActor let demoDeliverySupplement = DeliverySupplement(
+    shipToAddress: "Warehouse BV\nIndustrieweg 88\n9000 Ghent\nBelgium",
+    signatureRequired: true,
+    signatureLabel: "Received in good order by:"
+)
+
+/// Shipment supplement fixture: DHL carrier + tracking number.
+@MainActor let demoShipmentSupplement = ShipmentSupplement(
+    carrier: "DHL Express",
+    trackingNumber: "1Z999AA10123456784",
+    shipToAddress: "Warehouse BV\nIndustrieweg 88\n9000 Ghent\nBelgium",
+    estimatedDelivery: "2026-02-25",
+    signatureRequired: false
+)

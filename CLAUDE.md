@@ -6,9 +6,17 @@ A Swift DSL for generating PDFs using result builders, inspired by SwiftUI's dec
 ## Package structure
 ```
 Sources/
-├── SwiftlyPDFKit/      # Core PDF generation library (cross-platform)
-├── SwiftlyPDFKitUI/    # SwiftUI bridge — PDFPreviewView (macOS/iOS only)
-└── DemoPDFKit/         # Dynamic library: 11 invoice demos + Xcode #Preview blocks
+├── SwiftlyPDFKit/
+│   ├── Core/               # PDF primitives (cross-platform)
+│   └── Documents/
+│       ├── Shared/         # DocumentSupplement structs + shared drawing helpers
+│       ├── Invoice/        # Invoice data model, theme, layout builders
+│       ├── Quote/          # Quote layout (QuoteLayoutType + QuoteLayoutBuilder)
+│       ├── SalesOrder/     # Sales order layout
+│       ├── Delivery/       # Delivery note layout
+│       └── Shipment/       # Shipment confirmation layout
+├── SwiftlyPDFKitUI/        # SwiftUI bridge — PDFPreviewView (macOS/iOS only)
+└── DemoPDFKit/             # Dynamic library: 15 demos + Xcode #Preview blocks
 ```
 
 ## Package products
@@ -18,12 +26,18 @@ Sources/
 | `SwiftlyPDFKitUI` | static library | macOS, iOS |
 | `DemoPDFKit` | **dynamic** library | macOS, iOS |
 
+SPM scans `Sources/SwiftlyPDFKit/` recursively — no `Package.swift` changes needed when adding subdirectories.
+
 ## Key DSL types
 
 ### Entry point
 - `PDF { Page... }` — top-level document; `.render() -> Data`, `.write(to: URL)`
 - `PDF(pages: [Page])` — convenience init from a pre-built array (used internally by `PDFPreviewView`)
-- `PDF(layout:invoice:theme:pageSize:)` — builds an invoice page from an `InvoiceDocument` model
+- `PDF(layout:invoice:theme:pageSize:)` — builds an invoice PDF from an `InvoiceDocument` model
+- `PDF(quoteLayout:invoice:supplement:theme:pageSize:)` — quote / proposal
+- `PDF(salesOrderLayout:invoice:supplement:theme:pageSize:)` — sales order confirmation
+- `PDF(deliveryLayout:invoice:supplement:theme:pageSize:)` — delivery note / packing slip
+- `PDF(shipmentLayout:invoice:supplement:theme:pageSize:)` — shipment confirmation / dispatch advice
 
 ### Page
 - `Page(size: .a4/.letter/.legal, margins: CGFloat) { content... }`
@@ -54,36 +68,86 @@ Sources/
 - `Column(_ header: String, width: .flex/.fixed(n), alignment:, headerAlignment:)`
 - `TableStyle` — configures header bg, text colors, font sizes, row height, border, padding; has both `CGColor` and `PDFColor` initialisers
 
-## Invoice model
-- `InvoiceDocument(header:supplier:client:lines:totals:footer:)` — full data model
-  - `totals` defaults to `InvoiceTotals(lines:)` — omit unless overriding (e.g. partial payment / deposit)
-- `InvoiceTheme` — colors, fonts, logo position, row heights; built-in presets: `.standard`, `.gold`, `.corporate`
+## Document model (shared across all document types)
+
+All document types reuse `InvoiceDocument` as their core data model. Set `header.documentTitle` to the desired title (e.g. `"Quotation"`, `"Sales Order"`, `"Delivery Note"`).
+
+- `InvoiceDocument(header:supplier:client:lines:totals:footer:)`
+  - `totals` defaults to `InvoiceTotals(lines:)` — omit unless overriding (e.g. partial payment)
+- `InvoiceTheme` / `DocumentTheme` (typealias) — colors, fonts, logo position, row heights
+  - Built-in presets: `.standard`, `.gold`, `.corporate`
   - `logoPosition`: `.left` (default), `.right`, `.topCenter`
-- `InvoiceLayoutType`: five fully-implemented layouts:
-  - `.classic` — two-column header (logo + supplier / client), meta block, table, totals
-  - `.classicWithSidebar` — classic with a 14pt accent `FilledBox` bar on the full left edge of every page
-  - `.minimal` — borderless table, no header background, plain-text totals via `Columns` rows, airy 22pt row height
-  - `.stacked` — full-width accent banner title, supplier centred, client below HRule, light-tint meta strip; compact repeat header on continuation pages
-  - `.summaryFirst` — page 1 shows header + meta + totals + payment only; line items start on page 2
 
-## Multi-page invoice layout
-`classicLayout` (and `classicWithSidebarLayout`, `minimalLayout`, `stackedLayout`) automatically split invoices:
-- **Two-pass algorithm**: Pass 1 fills pages with as many rows as fit (ignoring bottom content). Pass 2 checks whether totals+notes+payment fit after the last row chunk; if not, an empty overflow page is appended.
-- **Page 1** overhead is estimated from `logoMaxHeight + 13 + 52` (logo col) + spacers + meta block (~80 pt).
-- **Continuation pages** start fresh at the top with only the table header row repeated.
-- **Last page** renders totals, optional notes, and optional payment/QR section.
-- **Footer** (`InvoiceFooter`) is emitted on every page via a local `makeFooter()` closure.
-- The empty-chunk overflow page emits just the bottom content — no rows, no table header.
+## Invoice layouts (`InvoiceLayoutType`)
+Five fully-implemented layouts via `PDF(layout:invoice:theme:pageSize:)`:
+- `.classic` — two-column header (logo + supplier / client), meta block, table, totals
+- `.classicWithSidebar` — classic with a 14pt accent `FilledBox` bar on the full left edge of every page
+- `.minimal` — borderless table, no header background, plain-text totals via `Columns` rows, airy 22pt row height
+- `.stacked` — full-width accent banner title, supplier centred, client below HRule, light-tint meta strip; compact repeat header on continuation pages
+- `.summaryFirst` — page 1 shows header + meta + totals + payment only; line items start on page 2
 
-`summaryFirstLayout` uses a different structure:
-- **Page 1** always contains only header + meta + totals + notes + payment (no line items).
-- **Pages 2+** contain only line items, paginated using `contRowsMax` rows per page.
+## New document layouts
+
+### Quote (`QuoteLayoutType`)
+Via `PDF(quoteLayout:invoice:supplement:theme:pageSize:)`. Supplement: `QuoteSupplement(expiryDate:acceptanceNote:)`.
+- `.classic` — two-column header, meta grid with "Quote No." / "Valid Until", priced line items, totals (no Amount Due row), acceptance signature block
+- `.minimal` — same as classic with borderless table theme override
+
+### Sales Order (`SalesOrderLayoutType`)
+Via `PDF(salesOrderLayout:invoice:supplement:theme:pageSize:)`. Supplement: `SalesOrderSupplement(poConfirmedDate:requestedDeliveryDate:)`.
+- `.classic` — meta grid with "Order No." / "Req. Delivery" / "PO Confirmed", full pricing table, totals (no payment/QR)
+- `.stacked` — delegates to `InvoiceLayoutBuilder.stackedLayout`
+
+### Delivery Note (`DeliveryLayoutType`)
+Via `PDF(deliveryLayout:invoice:supplement:theme:pageSize:)`. Supplement: `DeliverySupplement(shipToAddress:signatureRequired:signatureLabel:)`.
+- `.standard` — ship-to address strip (when `shipToAddress` set), delivery meta grid, simplified table (Description / Qty / Unit / Notes), **no pricing columns**, **no totals**, optional signature acknowledgement block at bottom
+
+Delivery table Notes column: only included when `invoice.lines.contains { $0.detail != nil }`.
+
+### Shipment Confirmation (`ShipmentLayoutType`)
+Via `PDF(shipmentLayout:invoice:supplement:theme:pageSize:)`. Supplement: `ShipmentSupplement(carrier:trackingNumber:shipToAddress:estimatedDelivery:signatureRequired:signatureLabel:)`.
+- `.standard` — accent carrier banner (carrier + tracking + est. delivery), ship-to strip, shipment meta grid, simplified table (same columns as delivery), optional signature block
+- `.compact` — single page, no table — plain `Text` rows for each line item (suitable for single-package confirmations)
+
+## Shared document layout infrastructure
+
+### DocumentSupplement (`Documents/Shared/DocumentSupplement.swift`)
+Four `public struct … : Sendable` types, one per document type. All fields optional with sensible defaults.
+
+### DocumentLayoutHelpers (`Documents/Shared/DocumentLayoutHelpers.swift`)
+Internal free functions returning `[any PDFContent]`:
+- `shipToAddressBlock(address:theme:)` — lightly-tinted `FilledBox` strip with ship-to address
+  - **Important**: converts `theme.accentColor` to sRGB before reading RGB components — grayscale colorspaces (e.g. `.standard`'s black accent) have only 2 components and will crash if accessed as RGB directly
+- `signatureBlock(label:theme:)` — rule + three fields (Signature / Date received / Print name)
+- `acceptanceBlock(note:theme:)` — quote acceptance section; returns `[]` when `note` is nil
+- `carrierBlock(carrier:trackingNumber:estimatedDelivery:theme:)` — accent `FilledBox` banner
+
+### InvoiceLayoutBuilder shared helpers
+All section builders in `InvoiceLayoutBuilder` are `internal static func` (not `private`) so sibling layout builders in the same module can call them:
+- `headerSection`, `metaSection`, `lineItemsTable`, `lineItemsTableForRows`, `totalsTable`, `paymentSection`, `logoOrFallback`, `supplierBlock`, `clientBlock`, `stackedMetaBanner`
+
+## Multi-page layout algorithm (two-pass)
+Used by all layout builders with tables:
+1. **Pass 1** — split `invoice.lines` into chunks: page 1 takes `floor((bodyH - page1Overhead - tableHeaderH) / rowH)` rows; continuation pages take `floor((bodyH - tableHeaderH) / rowH)` rows.
+2. **Pass 2** — compute `lastChunkUsed + lastPageBottomH`; if it exceeds `bodyH`, append an empty `[]` chunk → dedicated bottom-content-only page.
+
+`page1Overhead` varies per document type:
+- Invoice/Quote/SalesOrder: `logoMaxHeight + 13 + 52 + 20 + metaHeight + 20`
+- Delivery: adds `shipToH` (~46 pt when `shipToAddress` is set)
+- Shipment: adds `carrierH` (50 pt) + `shipToH`
+
+`lastPageBottomH` varies:
+- Invoice: `totalsH + notesH + paymentH`
+- Quote: `totalsH + notesH + acceptanceH`
+- SalesOrder: `totalsH + notesH`
+- Delivery/Shipment: `notesH + sigH`
+
+Footer is emitted on every page via a local `makeFooter()` closure.
 
 ## Number formatting (`InvoiceFormatter`)
-- `amount(_:)` — 2 decimal places, thousands grouped (e.g. `1,200.00`, `43,752.00`). Uses a shared `NumberFormatter` with `.decimal` style and `usesGroupingSeparator = true`.
+- `amount(_:)` — 2 decimal places, thousands grouped (e.g. `1,200.00`). Shared `static let` `NumberFormatter`.
 - `quantity(_:)` — 0–2 decimal places, thousands grouped. Trailing zeros trimmed.
 - `percent(_:)` — plain `String(format:)` with `%%`; no grouping (values are always small).
-- Both formatters are `static let` on `InvoiceFormatter` — created once, reused across all render calls.
 
 ## Coordinate system
 CoreGraphics PDFs have **origin at bottom-left**. The `cursor` variable tracks the current y-position starting from `bounds.maxY` (top of content area) and moves downward. Always pass `cursor` by `inout`.
@@ -107,16 +171,24 @@ CoreGraphics PDFs have **origin at bottom-left**. The `cursor` variable tracks t
 - This combination is required for `if/else`, `for`, and optional support to work correctly.
 
 ## Adding a new PDFContent type
-1. Create `Foo.swift` in `Sources/SwiftlyPDFKit/`
+1. Create `Foo.swift` in `Sources/SwiftlyPDFKit/Core/`
 2. `public struct Foo: PDFContent`
 3. Implement `public func draw(in context: CGContext, bounds: CGRect, cursor: inout CGFloat)`
 4. Expose `PDFColor` overloads where CGColor is used, so callers don't need to import CoreGraphics
+
+## Adding a new document type
+1. Create `Sources/SwiftlyPDFKit/Documents/MyType/` directory
+2. Add `MyTypeSupplement` struct to `Documents/Shared/DocumentSupplement.swift`
+3. Create `MyTypeLayout.swift` — public enum `MyTypeLayoutType` + `PDF(myTypeLayout:…)` extension
+4. Create `MyTypeLayoutBuilder.swift` — internal enum with layout static funcs; call `InvoiceLayoutBuilder.*` helpers freely (same module)
+5. Add demo `DemoNN_MyType.swift` to `Sources/DemoPDFKit/`
 
 ## Cross-platform notes
 - **No CoreImage** — not available on Linux. QR codes use `swift-qrcode-generator` (pure Swift).
 - **No AppKit/UIKit** — `NSAttributedString.Key.font` etc. are not available. Use CoreText CF attribute keys (`kCTFontAttributeName`, `kCTForegroundColorAttributeName`, `kCTParagraphStyleAttributeName`).
 - `CFAttributedStringCreate` instead of `NSAttributedString` for attributed strings.
 - `CGColor(gray:alpha:)` is fine everywhere; `CGColor.white` class var conflicts with `PDFColor.white` — always use `PDFColor.white` explicitly (not `.white` shorthand) when the overload accepts both types.
+- **CGColor colorspace caution**: grayscale `CGColor` (e.g. `CGColor(gray:alpha:)`) has only 2 components `[gray, alpha]`, not 4. Never assume RGB layout. Convert to sRGB with `cgColor.converted(to: CGColorSpace(name: CGColorSpace.sRGB)!, intent:options:)` before accessing `[r,g,b]` indices.
 
 ## SwiftUI preview support
 
@@ -147,7 +219,7 @@ Defined in `Sources/SwiftlyPDFKitUI/PDFPreviewView.swift`. Wraps a `PDFView` (PD
 #### DemoPDFKit file layout
 ```
 Sources/DemoPDFKit/
-├── Shared.swift                — logo path, shared fixtures (supplier/client/lines/footer/QR), invoicePreview()
+├── Shared.swift                — logo path, shared fixtures, supplement fixtures, invoicePreview()
 ├── Demo01_Standard.swift       — .classic · Standard theme · logo left · QR              #Preview "01 · Standard"
 ├── Demo02_Gold.swift           — .classic · Gold theme · logo left · no QR               #Preview "02 · Gold"
 ├── Demo03_Corporate.swift      — .classic · Corporate theme · QR + notes + service date  #Preview "03 · Corporate"
@@ -158,8 +230,17 @@ Sources/DemoPDFKit/
 ├── Demo08_Sidebar.swift        — .classicWithSidebar · Corporate theme · blue sidebar    #Preview "08 · Classic + Sidebar"
 ├── Demo09_Minimal.swift        — .minimal · Standard theme · 5 lines · notes             #Preview "09 · Minimal"
 ├── Demo10_Stacked.swift        — .stacked · custom teal theme                            #Preview "10 · Stacked"
-└── Demo11_SummaryFirst.swift   — .summaryFirst · Gold theme · full demoLines             #Preview "11 · Summary First"
+├── Demo11_SummaryFirst.swift   — .summaryFirst · Gold theme · full demoLines             #Preview "11 · Summary First"
+├── Demo12_Quote.swift          — .classic quote · Standard theme · acceptance block      #Preview "12 · Quote"
+├── Demo13_SalesOrder.swift     — .classic sales order · Corporate · multi-page           #Preview "13 · Sales Order"
+├── Demo14_Delivery.swift       — .standard delivery · ship-to + signature + Notes col    #Preview "14 · Delivery"
+└── Demo15_Shipment.swift       — .standard shipment · Corporate · carrier banner         #Preview "15 · Shipment"
 ```
+
+#### Shared.swift fixtures
+- `demoLogoPath`, `demoSupplier`, `demoClient`, `demoLines` (66 lines), `demoShortLines` (first 6), `demoFooter`, `demoQRPayload`
+- `demoQuoteSupplement`, `demoSalesOrderSupplement`, `demoDeliverySupplement`, `demoShipmentSupplement`
+- `invoicePreview(_ pdf: PDF) -> some View` helper
 
 ## Build
 ```bash
