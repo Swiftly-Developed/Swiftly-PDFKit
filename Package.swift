@@ -17,13 +17,9 @@ let package = Package(
             targets: ["SwiftlyPDFKitUI"]
         ),
         .library(
-            name: "SwiftlyPDFKitPreviews",
+            name: "DemoPDFKit",
             type: .dynamic,
-            targets: ["SwiftlyPDFKitPreviews"]
-        ),
-        .executable(
-            name: "HelloWorldPDF",
-            targets: ["HelloWorldPDF"]
+            targets: ["DemoPDFKit"]
         ),
     ],
     dependencies: [
@@ -52,17 +48,12 @@ let package = Package(
             ]
         ),
         .target(
-            name: "SwiftlyPDFKitPreviews",
+            name: "DemoPDFKit",
             dependencies: ["SwiftlyPDFKit", "SwiftlyPDFKitUI"],
-            path: "Sources/SwiftlyPDFKitPreviews",
+            path: "Sources/DemoPDFKit",
             swiftSettings: [
                 .unsafeFlags(["-enable-testing"]),
             ]
-        ),
-        .executableTarget(
-            name: "HelloWorldPDF",
-            dependencies: ["SwiftlyPDFKit"],
-            path: "Sources/HelloWorldPDF"
         ),
     ]
 )
