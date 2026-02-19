@@ -6,14 +6,17 @@ A Swift DSL for generating PDFs using result builders, inspired by SwiftUI's dec
 ## Package structure
 ```
 Sources/
-├── SwiftlyPDFKit/     # The library
-└── HelloWorldPDF/     # Example executable (invoice demo)
+├── SwiftlyPDFKit/          # Core PDF generation library (cross-platform)
+├── SwiftlyPDFKitUI/        # SwiftUI bridge — PDFPreviewView (macOS/iOS only)
+├── SwiftlyPDFKitPreviews/  # Xcode canvas #Preview blocks (macOS/iOS only)
+└── HelloWorldPDF/          # Example executable (invoice + DSL demo)
 ```
 
 ## Key DSL types
 
 ### Entry point
 - `PDF { Page... }` — top-level document; `.render() -> Data`, `.write(to: URL)`
+- `PDF(pages: [Page])` — convenience init from a pre-built array (used internally by `PDFPreviewView`)
 
 ### Page
 - `Page(size: .a4/.letter/.legal, margins: CGFloat) { content... }`
@@ -77,10 +80,43 @@ CoreGraphics PDFs have **origin at bottom-left**. The `cursor` variable tracks t
 - `CFAttributedStringCreate` instead of `NSAttributedString` for attributed strings.
 - `CGColor(gray:alpha:)` is fine everywhere; `CGColor.white` class var conflicts with `PDFColor.white` — always use `PDFColor.white` explicitly (not `.white` shorthand) when the overload accepts both types.
 
+## SwiftUI preview support (SwiftlyPDFKitUI + SwiftlyPDFKitPreviews)
+
+### PDFPreviewView
+Defined in `Sources/SwiftlyPDFKitUI/PDFPreviewView.swift`. Wraps a `PDFView` (PDFKit) in a SwiftUI view.
+- Import `SwiftlyPDFKitUI` to use it.
+- Whole file is `#if canImport(SwiftUI) && canImport(PDFKit)` guarded — safe on Linux.
+- `PDFKitBridgeView` is `internal`; uses `UIViewRepresentable` on iOS, `NSViewRepresentable` on macOS.
+
+```swift
+PDFPreviewView {
+    Page(size: .a4) {
+        Text("Hello").font(.helvetica, size: 24).bold()
+    }
+}
+```
+
+### #Preview blocks (SwiftlyPDFKitPreviews)
+Defined in `Sources/SwiftlyPDFKitPreviews/Previews.swift`.
+- Declared as a **dynamic library** product (`type: .dynamic`) — required for Xcode canvas support.
+- Uses `@available(macOS 14, iOS 17, *)` on all `#Preview` blocks (traits API requirement).
+- `@MainActor` required on any `var` that constructs `PDFPreviewView`.
+- **To see bare PDF with no device chrome**: use `traits: .sizeThatFitsLayout` and switch run destination to **My Mac** in Xcode. With an iPhone/iPad simulator destination `.sizeThatFitsLayout` still shows a device bezel.
+- **Bare fixed-size window**: `traits: .fixedLayout(width:height:)` on My Mac destination.
+- **iPhone bezel**: `traits: .portrait` with an iPhone simulator destination.
+- Canvas only works in **Selectable mode** (cursor icon at canvas bottom-left) for `.sizeThatFitsLayout`.
+
+### Package products
+| Product | Type | Platforms |
+|---|---|---|
+| `SwiftlyPDFKit` | static library | macOS, iOS, Linux |
+| `SwiftlyPDFKitUI` | static library | macOS, iOS |
+| `SwiftlyPDFKitPreviews` | **dynamic** library | macOS, iOS |
+
 ## Build & run
 ```bash
 swift build
-swift run HelloWorldPDF        # generates Invoice-20260114.pdf in cwd
+swift run HelloWorldPDF   # writes Invoice-Model-Demo.pdf + HelloWorld-DSL-Demo.pdf to cwd
 ```
 
 ## Git / GitHub
