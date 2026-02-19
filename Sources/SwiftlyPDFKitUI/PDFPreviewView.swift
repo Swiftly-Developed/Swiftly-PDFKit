@@ -26,6 +26,12 @@ public struct PDFPreviewView: View {
         self.pages = content()
     }
 
+    /// Convenience init that accepts a pre-built ``PDF`` value.
+    /// Useful for previewing invoice layouts built with `PDF(layout:invoice:)`.
+    public init(_ pdf: PDF) {
+        self.pages = pdf.pages
+    }
+
     public var body: some View {
         PDFKitBridgeView(pdfData: renderedData())
     }
