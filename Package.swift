@@ -55,5 +55,10 @@ let package = Package(
                 .unsafeFlags(["-enable-testing"]),
             ]
         ),
+        .executableTarget(
+            name: "GenerateDemos",
+            dependencies: ["SwiftlyPDFKit"],
+            path: "Sources/GenerateDemos"
+        ),
     ]
 )
