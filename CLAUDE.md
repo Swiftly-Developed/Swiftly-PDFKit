@@ -16,7 +16,9 @@ Sources/
 │       ├── Delivery/       # Delivery note layout
 │       └── Shipment/       # Shipment confirmation layout
 ├── SwiftlyPDFKitUI/        # SwiftUI bridge — PDFPreviewView (macOS/iOS only)
-└── DemoPDFKit/             # Dynamic library: 15 demos + Xcode #Preview blocks
+├── DemoPDFKit/             # Dynamic library: 15 demos + Xcode #Preview blocks
+└── GenerateDemos/          # Executable: renders all 15 demos to DemoPDFs/
+DemoPDFs/                   # Generated PDF output (gitignored or committed as needed)
 ```
 
 ## Package products
@@ -25,6 +27,7 @@ Sources/
 | `SwiftlyPDFKit` | static library | macOS, iOS, Linux |
 | `SwiftlyPDFKitUI` | static library | macOS, iOS |
 | `DemoPDFKit` | **dynamic** library | macOS, iOS |
+| `GenerateDemos` | **executable** | macOS |
 
 SPM scans `Sources/SwiftlyPDFKit/` recursively — no `Package.swift` changes needed when adding subdirectories.
 
@@ -241,6 +244,22 @@ Sources/DemoPDFKit/
 - `demoLogoPath`, `demoSupplier`, `demoClient`, `demoLines` (66 lines), `demoShortLines` (first 6), `demoFooter`, `demoQRPayload`
 - `demoQuoteSupplement`, `demoSalesOrderSupplement`, `demoDeliverySupplement`, `demoShipmentSupplement`
 - `invoicePreview(_ pdf: PDF) -> some View` helper
+- `demoSupplier` IBAN: `BE71 3630 8427 9163` (randomized); `demoQRPayload`: `"https://www.swiftly-workspace.com"` (URL, not EPC payment string)
+
+## GenerateDemos tool
+
+`Sources/GenerateDemos/main.swift` — a standalone macOS executable (no SwiftUI dependency) that replicates all 15 demo configurations from `DemoPDFKit` and writes them to `DemoPDFs/` at the package root.
+
+```bash
+# Generate all 15 demo PDFs
+swift run GenerateDemos
+```
+
+- Output: `DemoPDFs/Demo01_Standard.pdf` … `DemoPDFs/Demo15_Shipment.pdf`
+- Does **not** import `SwiftUI` or `SwiftlyPDFKitUI` — uses `SwiftlyPDFKit` only
+- All fixture data (supplier, client, lines, footer, supplements) is self-contained in `main.swift`; `demoSupplier` and `demoFooter` use IBAN `BE71 3630 8427 9163`
+- `demoQRPayload` is `"https://www.swiftly-workspace.com"` (URL-style QR, not a payment EPC string)
+- `Package.swift` declares it as `.executableTarget(name: "GenerateDemos", dependencies: ["SwiftlyPDFKit"])`
 
 ## Build
 ```bash
