@@ -266,6 +266,26 @@ swift run GenerateDemos
 swift build
 ```
 
+## Version
+Current: **0.1.0** — initial public release.
+
+## Repository files (OSS scaffolding)
+```
+LICENSE              — MIT
+README.md            — badges, installation (from: "0.1.0"), features, API docs, demos
+CHANGELOG.md         — Keep a Changelog format, semver
+CONTRIBUTING.md      — contribution guidelines, code style, cross-platform rules
+SECURITY.md          — vulnerability reporting process
+.github/
+├── ISSUE_TEMPLATE/
+│   ├── bug_report.md
+│   └── feature_request.md
+└── PULL_REQUEST_TEMPLATE.md
+```
+
+- `.gitignore` excludes `*.pdf` globally but allows `!DemoPDFs/*.pdf` — demo output is committed
+- `DemoPDFs/` contains 15 generated example PDFs (Demo01–Demo15)
+
 ## Git / GitHub
 - Remote: `https://github.com/Swiftly-Developed/Swiftly-PDFKit.git`
 - GitHub account: VanAkenBen; `gh` CLI is authenticated (scopes: repo, workflow, project).
