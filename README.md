@@ -3,8 +3,8 @@
 [![](https://img.shields.io/badge/Swift-6.0+-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![](https://img.shields.io/badge/Platforms-macOS_12+_|_iOS_15+_|_Linux-blue)](#requirements)
 [![](https://img.shields.io/badge/SPM-compatible-4FC08D)](#installation)
-[![](https://img.shields.io/github/v/tag/Swiftly-Developed/Swiftly-PDFKit?label=version&sort=semver)](https://github.com/Swiftly-Developed/Swiftly-PDFKit/releases)
-[![](https://img.shields.io/github/license/Swiftly-Developed/Swiftly-PDFKit)](LICENSE)
+[![](https://img.shields.io/badge/version-0.1.0-orange)](https://github.com/Swiftly-Developed/Swiftly-PDFKit/releases/tag/v0.1.0)
+[![](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A pure-Swift PDF generation library with a declarative DSL. Build pixel-perfect PDFs using a SwiftUI-inspired syntax — from simple one-page documents to multi-page invoices with automatic pagination.
 
