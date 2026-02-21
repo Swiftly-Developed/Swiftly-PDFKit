@@ -7,5 +7,6 @@ DerivedData/
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
 
-# Generated PDF output
+# Generated PDF output (except demo examples)
 *.pdf
+!DemoPDFs/*.pdf
