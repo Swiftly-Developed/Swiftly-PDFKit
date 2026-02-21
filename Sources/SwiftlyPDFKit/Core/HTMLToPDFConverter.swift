@@ -7,8 +7,9 @@ import Foundation
 #if !canImport(CoreGraphics)
 enum HTMLToPDFConverter {
 
-    /// Path to the `wkhtmltopdf` binary. Override if installed elsewhere.
-    static var toolPath: String = "/usr/bin/wkhtmltopdf"
+    /// Path to the `wkhtmltopdf` binary.
+    /// Set the `WKHTMLTOPDF_PATH` environment variable to override the default location.
+    static let toolPath: String = ProcessInfo.processInfo.environment["WKHTMLTOPDF_PATH"] ?? "/usr/bin/wkhtmltopdf"
 
     /// Converts the given HTML to PDF data using wkhtmltopdf.
     ///
