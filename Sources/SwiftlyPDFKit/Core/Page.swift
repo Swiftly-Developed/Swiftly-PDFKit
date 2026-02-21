@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
 import CoreGraphics
+#endif
 
 // MARK: - PageSize
 
@@ -37,8 +39,9 @@ public struct Page {
         self.bodyContents = all.filter { !($0 is Footer) }
     }
 
-    // MARK: Rendering
+    // MARK: CoreGraphics Rendering
 
+    #if canImport(CoreGraphics)
     public func render(in context: CGContext) {
         let footerHeight = footer?.height ?? 0
         let bodyBounds = CGRect(
@@ -62,5 +65,51 @@ public struct Page {
             )
             footer.renderInFooter(in: context, bounds: footerBounds)
         }
+    }
+    #endif
+
+    // MARK: HTML Rendering
+
+    func renderHTML() -> String {
+        let footerHeight = footer?.height ?? 0
+        let bodyHeight = size.height - margins * 2 - footerHeight
+        let bodyBounds = CGRect(
+            x: margins,
+            y: margins + footerHeight,
+            width: size.width - margins * 2,
+            height: bodyHeight
+        )
+
+        var cursor = bodyBounds.maxY
+        var bodyHTML = ""
+        for item in bodyContents {
+            bodyHTML += item.renderHTML(bounds: bodyBounds, cursor: &cursor)
+        }
+
+        var footerHTML = ""
+        if let footer {
+            let footerBounds = CGRect(
+                x: margins,
+                y: margins,
+                width: size.width - margins * 2,
+                height: footerHeight
+            )
+            footerHTML = footer.renderFooterHTML(bounds: footerBounds)
+        }
+
+        var html = "<div class=\"page\" style=\"width:\(size.width)pt;height:\(size.height)pt;"
+        html += "padding:\(margins)pt;position:relative;box-sizing:border-box;"
+        html += "page-break-after:always;overflow:hidden;\">"
+        html += "<div class=\"body\" style=\"min-height:\(bodyHeight)pt;\">"
+        html += bodyHTML
+        html += "</div>"
+        if !footerHTML.isEmpty {
+            html += "<div class=\"footer\" style=\"position:absolute;bottom:\(margins)pt;"
+            html += "left:\(margins)pt;right:\(margins)pt;height:\(footerHeight)pt;\">"
+            html += footerHTML
+            html += "</div>"
+        }
+        html += "</div>"
+        return html
     }
 }

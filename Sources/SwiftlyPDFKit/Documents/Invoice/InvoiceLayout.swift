@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
 import CoreGraphics
+#endif
 
 // MARK: - InvoiceLayoutType
 
@@ -982,17 +984,13 @@ enum InvoiceLayoutBuilder {
             chunks.append([])
         }
 
-        // Light tint for the meta banner — derive from CGColor components when available,
-        // otherwise fall back to a neutral light gray.
+        // Light tint for the meta banner — derive from accent colour components.
         let lightBannerColor: PDFColor = {
-            let cg = theme.accentColor.cgColor
-            if let comps = cg.components, cg.numberOfComponents >= 3 {
-                let r = comps[0] * 0.15 + 0.85
-                let g = comps[1] * 0.15 + 0.85
-                let b = comps[2] * 0.15 + 0.85
-                return PDFColor(red: r, green: g, blue: b)
-            }
-            return PDFColor(white: 0.90)
+            let comps = theme.accentColor.components
+            let r = comps.r * 0.15 + 0.85
+            let g = comps.g * 0.15 + 0.85
+            let b = comps.b * 0.15 + 0.85
+            return PDFColor(red: r, green: g, blue: b)
         }()
 
         func stackedPage1Header() -> some PDFContent {

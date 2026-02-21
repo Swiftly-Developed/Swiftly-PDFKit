@@ -1,7 +1,11 @@
 import Foundation
+#if canImport(CoreGraphics)
 import CoreGraphics
+#endif
+#if canImport(CoreText)
 import CoreText
 import CoreFoundation
+#endif
 
 // MARK: - TextAlignment
 
@@ -9,6 +13,14 @@ public enum TextAlignment: Sendable {
     case leading
     case center
     case trailing
+
+    var cssValue: String {
+        switch self {
+        case .leading:  return "left"
+        case .center:   return "center"
+        case .trailing: return "right"
+        }
+    }
 }
 
 // MARK: - PDFContent protocol
@@ -16,7 +28,10 @@ public enum TextAlignment: Sendable {
 /// A piece of renderable content. `cursor` starts near the top of the content
 /// area (high y in CG coordinates) and decreases as items are drawn.
 public protocol PDFContent {
+    #if canImport(CoreGraphics)
     func draw(in context: CGContext, bounds: CGRect, cursor: inout CGFloat)
+    #endif
+    func renderHTML(bounds: CGRect, cursor: inout CGFloat) -> String
 }
 
 // MARK: - Text
@@ -27,7 +42,7 @@ public struct Text: PDFContent {
     var fontSize: CGFloat = 16
     var isBold: Bool = false
     var isItalic: Bool = false
-    var textColor: CGColor = CGColor(gray: 0, alpha: 1)
+    var textColor: PDFColor = .black
     var alignment: TextAlignment = .leading
 
     public init(_ string: String) {
@@ -48,12 +63,14 @@ public struct Text: PDFContent {
         var copy = self; copy.isItalic = true; return copy
     }
 
+    #if canImport(CoreGraphics)
     public func foregroundColor(_ color: CGColor) -> Text {
-        var copy = self; copy.textColor = color; return copy
+        foregroundColor(PDFColor(cgColor: color))
     }
+    #endif
 
     public func foregroundColor(_ color: PDFColor) -> Text {
-        foregroundColor(color.cgColor)
+        var copy = self; copy.textColor = color; return copy
     }
 
     public func fontSize(_ size: CGFloat) -> Text {
@@ -64,17 +81,39 @@ public struct Text: PDFContent {
         var copy = self; copy.alignment = a; return copy
     }
 
-    // MARK: Rendering
+    // MARK: CoreGraphics Rendering
 
+    #if canImport(CoreGraphics)
     public func draw(in context: CGContext, bounds: CGRect, cursor: inout CGFloat) {
         drawText(string, in: context, bounds: bounds, cursor: &cursor,
                  font: fontFace.ctFont(size: fontSize, bold: isBold, italic: isItalic),
-                 color: textColor, alignment: alignment)
+                 color: textColor.cgColor, alignment: alignment)
+    }
+    #endif
+
+    // MARK: HTML Rendering
+
+    public func renderHTML(bounds: CGRect, cursor: inout CGFloat) -> String {
+        let weight = isBold ? "bold" : "normal"
+        let style = isItalic ? "italic" : "normal"
+        let lineHeight = fontSize * 1.2
+        let avgCharWidth = fontSize * 0.5
+        let charsPerLine = max(1, bounds.width / avgCharWidth)
+        let lineCount = max(1, ceil(CGFloat(string.count) / charsPerLine))
+        cursor -= lineHeight * lineCount
+
+        return """
+        <div style="font-family:\(fontFace.cssFontFamily);font-size:\(fontSize)pt;\
+        font-weight:\(weight);font-style:\(style);color:\(textColor.cssRGBA);\
+        text-align:\(alignment.cssValue);line-height:1.2;">\
+        \(string.htmlEscaped)</div>
+        """
     }
 }
 
-// MARK: - Shared text drawing helper
+// MARK: - Shared text drawing helper (Darwin only)
 
+#if canImport(CoreGraphics)
 /// Draws a string into `context`, updating `cursor`. Returns the new cursor value.
 @discardableResult
 func drawText(
@@ -142,6 +181,7 @@ func drawText(
     }
     return cursor
 }
+#endif
 
 // MARK: - Spacer
 
@@ -152,8 +192,15 @@ public struct Spacer: PDFContent {
         self.height = height
     }
 
+    #if canImport(CoreGraphics)
     public func draw(in context: CGContext, bounds: CGRect, cursor: inout CGFloat) {
         cursor -= height
+    }
+    #endif
+
+    public func renderHTML(bounds: CGRect, cursor: inout CGFloat) -> String {
+        cursor -= height
+        return "<div style=\"height:\(height)pt;\"></div>"
     }
 }
 
@@ -161,24 +208,33 @@ public struct Spacer: PDFContent {
 
 public struct HRule: PDFContent {
     let thickness: CGFloat
-    let color: CGColor
+    let ruleColor: PDFColor
 
+    #if canImport(CoreGraphics)
     public init(thickness: CGFloat = 0.5, color: CGColor = CGColor(gray: 0, alpha: 1)) {
         self.thickness = thickness
-        self.color = color
+        self.ruleColor = PDFColor(cgColor: color)
     }
+    #endif
 
-    public init(thickness: CGFloat = 0.5, color: PDFColor) {
+    public init(thickness: CGFloat = 0.5, color: PDFColor = .black) {
         self.thickness = thickness
-        self.color = color.cgColor
+        self.ruleColor = color
     }
 
+    #if canImport(CoreGraphics)
     public func draw(in context: CGContext, bounds: CGRect, cursor: inout CGFloat) {
         context.setLineWidth(thickness)
-        context.setStrokeColor(color)
+        context.setStrokeColor(ruleColor.cgColor)
         context.move(to: CGPoint(x: bounds.minX, y: cursor))
         context.addLine(to: CGPoint(x: bounds.maxX, y: cursor))
         context.strokePath()
         cursor -= thickness + 4
+    }
+    #endif
+
+    public func renderHTML(bounds: CGRect, cursor: inout CGFloat) -> String {
+        cursor -= thickness + 4
+        return "<hr style=\"border:none;border-top:\(thickness)pt solid \(ruleColor.cssRGBA);margin:2pt 0;\">"
     }
 }

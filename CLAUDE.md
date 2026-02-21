@@ -267,12 +267,12 @@ swift build
 ```
 
 ## Version
-Current: **0.1.0** — initial public release.
+Current: **0.2.0** — Linux HTML-to-PDF backend.
 
 ## Repository files (OSS scaffolding)
 ```
 LICENSE              — MIT
-README.md            — badges, installation (from: "0.1.0"), features, API docs, demos
+README.md            — badges, installation (from: "0.2.0"), features, API docs, demos
 CHANGELOG.md         — Keep a Changelog format, semver
 CONTRIBUTING.md      — contribution guidelines, code style, cross-platform rules
 SECURITY.md          — vulnerability reporting process

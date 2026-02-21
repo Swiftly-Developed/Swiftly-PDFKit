@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
 import CoreGraphics
+#endif
 
 // MARK: - DeliveryLayoutBuilder (internal)
 

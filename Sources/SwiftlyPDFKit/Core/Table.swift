@@ -1,6 +1,11 @@
+import Foundation
+#if canImport(CoreGraphics)
 import CoreGraphics
+#endif
+#if canImport(CoreText)
 import CoreText
 import CoreFoundation
+#endif
 
 // MARK: - ColumnWidth
 
@@ -40,31 +45,32 @@ public struct ColumnBuilder {
 // MARK: - TableStyle
 
 public struct TableStyle: Sendable {
-    public var headerBackground: CGColor
-    public var headerTextColor: CGColor
+    public var headerBackground: PDFColor
+    public var headerTextColor: PDFColor
     public var headerFontSize: CGFloat
     public var cellFontSize: CGFloat
     public var rowHeight: CGFloat
-    public var alternateRowColor: CGColor?
-    public var borderColor: CGColor
+    public var alternateRowColor: PDFColor?
+    public var borderColor: PDFColor
     public var borderWidth: CGFloat
     public var cellPadding: CGFloat
     /// When true, data cells are rendered in bold.
     public var cellBold: Bool
 
     public static let `default` = TableStyle(
-        headerBackground: CGColor(gray: 0.85, alpha: 1),
-        headerTextColor: CGColor(gray: 0, alpha: 1),
+        headerBackground: PDFColor(white: 0.85),
+        headerTextColor: .black,
         headerFontSize: 10,
         cellFontSize: 10,
         rowHeight: 20,
         alternateRowColor: nil,
-        borderColor: CGColor(gray: 0.7, alpha: 1),
+        borderColor: PDFColor(white: 0.7),
         borderWidth: 0.25,
         cellPadding: 4,
         cellBold: false
     )
 
+    #if canImport(CoreGraphics)
     public init(
         headerBackground: CGColor = CGColor(gray: 0.85, alpha: 1),
         headerTextColor: CGColor = CGColor(gray: 0, alpha: 1),
@@ -77,17 +83,18 @@ public struct TableStyle: Sendable {
         cellPadding: CGFloat = 4,
         cellBold: Bool = false
     ) {
-        self.headerBackground = headerBackground
-        self.headerTextColor = headerTextColor
+        self.headerBackground = PDFColor(cgColor: headerBackground)
+        self.headerTextColor = PDFColor(cgColor: headerTextColor)
         self.headerFontSize = headerFontSize
         self.cellFontSize = cellFontSize
         self.rowHeight = rowHeight
-        self.alternateRowColor = alternateRowColor
-        self.borderColor = borderColor
+        self.alternateRowColor = alternateRowColor.map { PDFColor(cgColor: $0) }
+        self.borderColor = PDFColor(cgColor: borderColor)
         self.borderWidth = borderWidth
         self.cellPadding = cellPadding
         self.cellBold = cellBold
     }
+    #endif
 
     /// PDFColor convenience initialiser — no CoreGraphics import needed in call sites.
     public init(
@@ -102,13 +109,13 @@ public struct TableStyle: Sendable {
         cellPadding: CGFloat = 4,
         cellBold: Bool = false
     ) {
-        self.headerBackground = headerBackground.cgColor
-        self.headerTextColor = headerTextColor.cgColor
+        self.headerBackground = headerBackground
+        self.headerTextColor = headerTextColor
         self.headerFontSize = headerFontSize
         self.cellFontSize = cellFontSize
         self.rowHeight = rowHeight
-        self.alternateRowColor = alternateRowColor?.cgColor
-        self.borderColor = borderColor.cgColor
+        self.alternateRowColor = alternateRowColor
+        self.borderColor = borderColor
         self.borderWidth = borderWidth
         self.cellPadding = cellPadding
         self.cellBold = cellBold
@@ -135,6 +142,24 @@ public struct Table: PDFContent {
         self.showHeader = showHeader
     }
 
+    // MARK: Width resolution (shared)
+
+    func resolvedWidths(totalWidth: CGFloat) -> [CGFloat] {
+        let fixedTotal = columns.compactMap {
+            if case .fixed(let w) = $0.width { return w } else { return nil }
+        }.reduce(CGFloat(0), +)
+        let flexCount = columns.filter {
+            if case .flex = $0.width { return true } else { return false }
+        }.count
+        let flexWidth = flexCount > 0 ? (totalWidth - fixedTotal) / CGFloat(flexCount) : 0
+        return columns.map { col in
+            switch col.width { case .fixed(let w): return w; case .flex: return flexWidth }
+        }
+    }
+
+    // MARK: CoreGraphics Rendering
+
+    #if canImport(CoreGraphics)
     public func draw(in context: CGContext, bounds: CGRect, cursor: inout CGFloat) {
         guard !columns.isEmpty else { return }
 
@@ -151,8 +176,8 @@ public struct Table: PDFContent {
                 rowHeight: style.rowHeight,
                 fontSize: style.headerFontSize,
                 bold: true,
-                textColor: style.headerTextColor,
-                background: style.headerBackground
+                textColor: style.headerTextColor.cgColor,
+                background: style.headerBackground.cgColor
             )
             cursor -= style.rowHeight
         }
@@ -160,7 +185,7 @@ public struct Table: PDFContent {
         for (rowIndex, row) in rows.enumerated() {
             let bg: CGColor?
             if let alt = style.alternateRowColor, rowIndex.isMultiple(of: 2) {
-                bg = alt
+                bg = alt.cgColor
             } else {
                 bg = nil
             }
@@ -179,21 +204,6 @@ public struct Table: PDFContent {
                 background: bg
             )
             cursor -= style.rowHeight
-        }
-    }
-
-    // MARK: Helpers
-
-    private func resolvedWidths(totalWidth: CGFloat) -> [CGFloat] {
-        let fixedTotal = columns.compactMap {
-            if case .fixed(let w) = $0.width { return w } else { return nil }
-        }.reduce(CGFloat(0), +)
-        let flexCount = columns.filter {
-            if case .flex = $0.width { return true } else { return false }
-        }.count
-        let flexWidth = flexCount > 0 ? (totalWidth - fixedTotal) / CGFloat(flexCount) : 0
-        return columns.map { col in
-            switch col.width { case .fixed(let w): return w; case .flex: return flexWidth }
         }
     }
 
@@ -226,7 +236,6 @@ public struct Table: PDFContent {
             let cellAlignment = idx < alignments.count ? alignments[idx] : .leading
             let cellBounds = CGRect(x: xOffset + pad, y: y - rowHeight,
                                     width: width - pad * 2, height: rowHeight)
-            // Vertically centre: draw one line
             let attrs: [CFString: Any] = [
                 kCTFontAttributeName: font,
                 kCTForegroundColorAttributeName: textColor,
@@ -254,9 +263,72 @@ public struct Table: PDFContent {
 
         // Bottom border
         context.setLineWidth(style.borderWidth)
-        context.setStrokeColor(style.borderColor)
+        context.setStrokeColor(style.borderColor.cgColor)
         context.move(to: CGPoint(x: x, y: y - rowHeight))
         context.addLine(to: CGPoint(x: x + totalWidth, y: y - rowHeight))
         context.strokePath()
+    }
+    #endif
+
+    // MARK: HTML Rendering
+
+    public func renderHTML(bounds: CGRect, cursor: inout CGFloat) -> String {
+        guard !columns.isEmpty else { return "" }
+
+        let colWidths = resolvedWidths(totalWidth: bounds.width)
+        let pad = style.cellPadding
+        let borderCSS = "\(style.borderWidth)pt solid \(style.borderColor.cssRGBA)"
+
+        var html = "<table style=\"width:100%;border-collapse:collapse;table-layout:fixed;\">"
+
+        html += "<colgroup>"
+        for w in colWidths {
+            html += "<col style=\"width:\(w)pt;\">"
+        }
+        html += "</colgroup>"
+
+        if showHeader {
+            html += "<tr>"
+            for (idx, col) in columns.enumerated() {
+                let align = col.headerAlignment.cssValue
+                html += "<th style=\"background:\(style.headerBackground.cssRGBA);"
+                html += "color:\(style.headerTextColor.cssRGBA);"
+                html += "font-size:\(style.headerFontSize)pt;font-weight:bold;"
+                html += "text-align:\(align);height:\(style.rowHeight)pt;"
+                html += "padding:0 \(pad)pt;border-bottom:\(borderCSS);"
+                html += "overflow:hidden;white-space:nowrap;font-family:Helvetica,Arial,sans-serif;\">"
+                html += columns[idx].header.htmlEscaped
+                html += "</th>"
+            }
+            html += "</tr>"
+            cursor -= style.rowHeight
+        }
+
+        for (rowIndex, row) in rows.enumerated() {
+            let bgCSS: String
+            if let alt = style.alternateRowColor, rowIndex.isMultiple(of: 2) {
+                bgCSS = "background:\(alt.cssRGBA);"
+            } else {
+                bgCSS = ""
+            }
+            html += "<tr>"
+            for idx in 0..<columns.count {
+                let text = idx < row.count ? row[idx] : ""
+                let align = columns[idx].alignment.cssValue
+                let weight = style.cellBold ? "bold" : "normal"
+                html += "<td style=\"font-size:\(style.cellFontSize)pt;"
+                html += "font-weight:\(weight);text-align:\(align);"
+                html += "height:\(style.rowHeight)pt;padding:0 \(pad)pt;"
+                html += "border-bottom:\(borderCSS);\(bgCSS)"
+                html += "overflow:hidden;white-space:nowrap;font-family:Helvetica,Arial,sans-serif;\">"
+                html += text.htmlEscaped
+                html += "</td>"
+            }
+            html += "</tr>"
+            cursor -= style.rowHeight
+        }
+
+        html += "</table>"
+        return html
     }
 }

@@ -3,7 +3,7 @@
 [![](https://img.shields.io/badge/Swift-6.0+-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![](https://img.shields.io/badge/Platforms-macOS_12+_|_iOS_15+_|_Linux-blue)](#requirements)
 [![](https://img.shields.io/badge/SPM-compatible-4FC08D)](#installation)
-[![](https://img.shields.io/badge/version-0.1.0-orange)](https://github.com/Swiftly-Developed/Swiftly-PDFKit/releases/tag/v0.1.0)
+[![](https://img.shields.io/badge/version-0.2.0-orange)](https://github.com/Swiftly-Developed/Swiftly-PDFKit/releases/tag/v0.2.0)
 [![](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A pure-Swift PDF generation library with a declarative DSL. Build pixel-perfect PDFs using a SwiftUI-inspired syntax — from simple one-page documents to multi-page invoices with automatic pagination.
@@ -13,7 +13,7 @@ A pure-Swift PDF generation library with a declarative DSL. Build pixel-perfect 
 ## Features
 
 - **Declarative DSL** &mdash; Result-builder syntax for pages, text, tables, columns, and more
-- **Cross-platform** &mdash; Pure CoreGraphics/CoreText rendering; no AppKit or UIKit dependency
+- **Cross-platform** &mdash; CoreGraphics on Apple platforms, HTML-to-PDF on Linux; no AppKit or UIKit dependency
 - **Invoice engine** &mdash; 5 built-in layouts with automatic multi-page pagination
 - **Business documents** &mdash; Quotes, sales orders, delivery notes, and shipment documents
 - **Themeable** &mdash; 3 built-in themes + fully customizable colors, fonts, and spacing
@@ -28,7 +28,7 @@ Add SwiftlyPDFKit to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Swiftly-Developed/Swiftly-PDFKit.git", from: "0.1.0"),
+    .package(url: "https://github.com/Swiftly-Developed/Swiftly-PDFKit.git", from: "0.2.0"),
 ]
 ```
 
@@ -416,6 +416,8 @@ Sources/
       ImageContent.swift      # Image rendering
       QRCodeContent.swift     # QR code generation
       Footer.swift            # Page footer
+      HTMLToPDFConverter.swift # Linux HTML-to-PDF via wkhtmltopdf
+      HTMLUtilities.swift      # HTML escaping helpers
     Documents/
       Invoice/
         Invoice.swift         # Data model (Supplier, Client, Header, Line, etc.)
@@ -443,7 +445,8 @@ Sources/
 |------------|---------|---------|
 | [swift-qrcode-generator](https://github.com/fwcd/swift-qrcode-generator) | ~> 1.0 | Pure-Swift QR code encoder (cross-platform) |
 
-System frameworks: CoreGraphics, CoreText (all platforms), PDFKit (macOS/iOS only, for SwiftUI previews).
+**Apple platforms**: CoreGraphics, CoreText (macOS/iOS), PDFKit (SwiftUI previews only).
+**Linux**: `wkhtmltopdf` system binary for HTML-to-PDF conversion (install with `apt-get install wkhtmltopdf`).
 
 ---
 
@@ -451,7 +454,7 @@ System frameworks: CoreGraphics, CoreText (all platforms), PDFKit (macOS/iOS onl
 
 - **Swift 6.0+**
 - **macOS 12+** or **iOS 15+** for Apple platforms
-- **Linux**: CoreGraphics and CoreText via Swift Foundation (server-side with Vapor)
+- **Linux**: Swift 6.0+ toolchain and `wkhtmltopdf` (`apt-get install wkhtmltopdf`)
 
 ---
 

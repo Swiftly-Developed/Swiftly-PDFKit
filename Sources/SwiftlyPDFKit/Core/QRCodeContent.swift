@@ -1,5 +1,7 @@
-import CoreGraphics
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 import QRCodeGenerator
 
 // MARK: - QRCodeContent
@@ -16,6 +18,9 @@ public struct QRCodeContent: PDFContent {
         self.alignment = alignment
     }
 
+    // MARK: CoreGraphics Rendering
+
+    #if canImport(CoreGraphics)
     public func draw(in context: CGContext, bounds: CGRect, cursor: inout CGFloat) {
         guard let qr = try? QRCode.encode(text: content, ecl: .medium) else { return }
 
@@ -48,5 +53,37 @@ public struct QRCodeContent: PDFContent {
         }
 
         cursor -= size
+    }
+    #endif
+
+    // MARK: HTML Rendering
+
+    public func renderHTML(bounds: CGRect, cursor: inout CGFloat) -> String {
+        guard let qr = try? QRCode.encode(text: content, ecl: .medium) else { return "" }
+        let moduleCount = qr.size
+
+        var rects = ""
+        for row in 0..<moduleCount {
+            for col in 0..<moduleCount {
+                if qr.getModule(x: col, y: row) {
+                    rects += "<rect x=\"\(col)\" y=\"\(row)\" width=\"1\" height=\"1\"/>"
+                }
+            }
+        }
+
+        let alignCSS: String
+        switch alignment {
+        case .leading:  alignCSS = ""
+        case .center:   alignCSS = "margin-left:auto;margin-right:auto;"
+        case .trailing: alignCSS = "margin-left:auto;"
+        }
+
+        cursor -= size
+        return """
+        <svg width="\(size)pt" height="\(size)pt" viewBox="0 0 \(moduleCount) \(moduleCount)" \
+        xmlns="http://www.w3.org/2000/svg" \
+        style="display:block;\(alignCSS)">\
+        \(rects)</svg>
+        """
     }
 }

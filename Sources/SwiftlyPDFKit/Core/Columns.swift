@@ -1,4 +1,7 @@
+import Foundation
+#if canImport(CoreGraphics)
 import CoreGraphics
+#endif
 
 // MARK: - ColumnItem
 
@@ -40,9 +43,9 @@ public struct Columns: PDFContent {
         self.items = content()
     }
 
-    public func draw(in context: CGContext, bounds: CGRect, cursor: inout CGFloat) {
-        guard !items.isEmpty else { return }
+    // MARK: Shared width resolution
 
+    private func resolvedColumnWidths(totalWidth: CGFloat) -> [CGFloat] {
         let totalSpacing = spacing * CGFloat(items.count - 1)
         let fixedTotal = items.compactMap {
             if case .fixed(let w) = $0.width { return w } else { return nil }
@@ -50,18 +53,28 @@ public struct Columns: PDFContent {
         let flexCount = items.filter {
             if case .flex = $0.width { return true } else { return false }
         }.count
-        let flexWidth = flexCount > 0 ? (bounds.width - fixedTotal - totalSpacing) / CGFloat(flexCount) : 0
+        let flexWidth = flexCount > 0 ? (totalWidth - fixedTotal - totalSpacing) / CGFloat(flexCount) : 0
+        return items.map { item in
+            switch item.width {
+            case .fixed(let w): return w
+            case .flex:         return flexWidth
+            }
+        }
+    }
+
+    // MARK: CoreGraphics Rendering
+
+    #if canImport(CoreGraphics)
+    public func draw(in context: CGContext, bounds: CGRect, cursor: inout CGFloat) {
+        guard !items.isEmpty else { return }
+
+        let colWidths = resolvedColumnWidths(totalWidth: bounds.width)
 
         var xOffset = bounds.minX
-        var minCursor = cursor  // track lowest point across all columns
+        var minCursor = cursor
 
-        for item in items {
-            let colWidth: CGFloat
-            switch item.width {
-            case .fixed(let w): colWidth = w
-            case .flex:         colWidth = flexWidth
-            }
-
+        for (idx, item) in items.enumerated() {
+            let colWidth = colWidths[idx]
             let colBounds = CGRect(x: xOffset, y: bounds.minY, width: colWidth, height: bounds.height)
             var colCursor = cursor
             for content in item.contents {
@@ -72,5 +85,34 @@ public struct Columns: PDFContent {
         }
 
         cursor = minCursor
+    }
+    #endif
+
+    // MARK: HTML Rendering
+
+    public func renderHTML(bounds: CGRect, cursor: inout CGFloat) -> String {
+        guard !items.isEmpty else { return "" }
+
+        let colWidths = resolvedColumnWidths(totalWidth: bounds.width)
+
+        var html = "<div style=\"display:flex;gap:\(spacing)pt;\">"
+        var minCursor = cursor
+
+        for (idx, item) in items.enumerated() {
+            let w = colWidths[idx]
+            var colCursor = cursor
+            let colBounds = CGRect(x: 0, y: bounds.minY, width: w, height: bounds.height)
+
+            html += "<div style=\"width:\(w)pt;flex-shrink:0;flex-grow:0;\">"
+            for content in item.contents {
+                html += content.renderHTML(bounds: colBounds, cursor: &colCursor)
+            }
+            html += "</div>"
+            minCursor = min(minCursor, colCursor)
+        }
+
+        html += "</div>"
+        cursor = minCursor
+        return html
     }
 }

@@ -1,4 +1,7 @@
+import Foundation
+#if canImport(CoreGraphics)
 import CoreGraphics
+#endif
 
 // Internal helpers shared by all non-invoice layout builders in this module.
 
@@ -8,20 +11,11 @@ import CoreGraphics
 /// Returns an array so it can be conditionally included with `if let`.
 func shipToAddressBlock(address: String, theme: InvoiceTheme) -> [any PDFContent] {
     // Use a very light tint of the accent colour for the strip background.
-    // CGColor components vary by colorspace: RGB has [r,g,b,a], grayscale has [w,a].
-    // Convert to RGB regardless of source colorspace.
-    let lightBg: PDFColor
-    if let rgb = theme.accentColor.cgColor.converted(
-            to: CGColorSpace(name: CGColorSpace.sRGB)!,
-            intent: .defaultIntent, options: nil),
-       let c = rgb.components, c.count >= 3 {
-        lightBg = PDFColor(red:   c[0] * 0.12 + 0.88,
-                           green: c[1] * 0.12 + 0.88,
-                           blue:  c[2] * 0.12 + 0.88,
+    let comps = theme.accentColor.components
+    let lightBg = PDFColor(red:   comps.r * 0.12 + 0.88,
+                           green: comps.g * 0.12 + 0.88,
+                           blue:  comps.b * 0.12 + 0.88,
                            alpha: 1)
-    } else {
-        lightBg = PDFColor(white: 0.92, alpha: 1)
-    }
 
     let lines = address.components(separatedBy: "\n")
     let lineCount = max(lines.count, 1)
