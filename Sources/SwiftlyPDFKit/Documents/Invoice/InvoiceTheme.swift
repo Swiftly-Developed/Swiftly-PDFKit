@@ -203,6 +203,47 @@ public struct InvoiceTheme: Sendable {
         self.lineItemRowHeight = lineItemRowHeight
         self.totalsRowHeight = totalsRowHeight
     }
+
+    // MARK: - Accent override
+
+    /// Returns a copy of the theme with `accent` as the accent color, coherently
+    /// re-pointing every slot the theme derives from its accent.
+    ///
+    /// A preset ties some of its slots to the accent (e.g. ``corporate`` uses
+    /// its blue for the rule lines, table header background and payment
+    /// banner). Overriding only ``accentColor`` would leave those slots on the
+    /// old color — a half-tinted theme. This helper rewrites each slot that
+    /// currently equals the accent, and leaves independently-styled slots
+    /// (e.g. ``standard``'s gray rules) untouched.
+    ///
+    /// ```swift
+    /// let branded = InvoiceTheme.corporate.applyingAccent(PDFColor(hex: "#7A1FA2")!)
+    /// ```
+    public func applyingAccent(_ accent: PDFColor) -> InvoiceTheme {
+        var copy = self
+        copy.accentColor = accent
+        if ruleColor.matchesComponents(of: accentColor) {
+            copy.ruleColor = accent
+        }
+        if tableHeaderBackground.matchesComponents(of: accentColor) {
+            copy.tableHeaderBackground = accent
+        }
+        if let banner = paymentBannerColor, banner.matchesComponents(of: accentColor) {
+            copy.paymentBannerColor = accent
+        }
+        return copy
+    }
+}
+
+// MARK: - Accent-derivation comparison
+
+private extension PDFColor {
+    /// Component-wise equality, used to detect slots a preset derives from its
+    /// accent. (`PDFColor` itself is not `Equatable` at v0.2.1; conforming it
+    /// is out of this additive phase's scope.)
+    func matchesComponents(of other: PDFColor) -> Bool {
+        red == other.red && green == other.green && blue == other.blue && alpha == other.alpha
+    }
 }
 
 /// `DocumentTheme` is a synonym for `InvoiceTheme`.
