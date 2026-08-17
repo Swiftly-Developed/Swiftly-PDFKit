@@ -538,25 +538,25 @@ enum InvoiceLayoutBuilder {
         // ── Height accounting (functional page-fit only) ───────────────────
         let rowH = theme.lineItemRowHeight
 
-        let headerHeight:  CGFloat = theme.logoMaxHeight + 13 + 52
-        let shipToH:       CGFloat = invoice.shipTo != nil ? 16 + 6 * 13 + 8 : 0
-        let metaHeight:    CGFloat = 80
-        let headlineH:     CGFloat = invoice.paymentState != nil ? 24 + 8 : 0
+        let headerHeight: CGFloat = theme.logoMaxHeight + 13 + 52
+        let shipToH: CGFloat = invoice.shipTo != nil ? 16 + 6 * 13 + 8 : 0
+        let metaHeight: CGFloat = 80
+        let headlineH: CGFloat = invoice.paymentState != nil ? 24 + 8 : 0
         let page1Overhead: CGFloat = headerHeight + 20 + shipToH + metaHeight + 12 + headlineH
 
-        let tableHeaderH:  CGFloat = rowH
+        let tableHeaderH: CGFloat = rowH
 
         let totalsRowCount   = (invoice.totals.amountPaid ?? 0) > 0 ? 5 : 4
-        let totalsH:         CGFloat = CGFloat(totalsRowCount) * theme.totalsRowHeight + 12
+        let totalsH: CGFloat = CGFloat(totalsRowCount) * theme.totalsRowHeight + 12
         let breakdownRows    = invoice.taxBreakdown?.count ?? 0
-        let breakdownH:      CGFloat = breakdownRows > 0
+        let breakdownH: CGFloat = breakdownRows > 0
             ? CGFloat(breakdownRows + 1) * theme.totalsRowHeight + 16 + 14 : 0
-        let taxNoteH:        CGFloat = invoice.taxNote != nil ? 8 + 14 : 0
-        let notesH:          CGFloat = invoice.header.notes != nil ? 20 + 14 : 0
+        let taxNoteH: CGFloat = invoice.taxNote != nil ? 8 + 14 : 0
+        let notesH: CGFloat = invoice.header.notes != nil ? 20 + 14 : 0
         let historyRows      = invoice.paymentHistory?.count ?? 0
-        let historyH:        CGFloat = historyRows > 0
+        let historyH: CGFloat = historyRows > 0
             ? CGFloat(historyRows + 1) * theme.totalsRowHeight + 16 + 14 : 0
-        let paymentH:        CGFloat = (invoice.header.qrPayload != nil ||
+        let paymentH: CGFloat = (invoice.header.qrPayload != nil ||
                                         invoice.header.paymentReference != nil) ? 16 + 80 : 0
         let lastPageBottomH: CGFloat = totalsH + breakdownH + taxNoteH + notesH + historyH + paymentH
 
@@ -811,7 +811,7 @@ enum InvoiceLayoutBuilder {
         theme: InvoiceTheme,
         fmt: InvoiceFormatter
     ) -> some PDFContent {
-        let h = invoice.header
+        let header = invoice.header
         return Columns(spacing: 20) {
             // Left: key–value pairs
             ColumnItem(width: .fixed(240)) {
@@ -819,15 +819,15 @@ enum InvoiceLayoutBuilder {
                     ColumnItem(width: .fixed(90)) {
                         Text(fmt.labels.invoiceNumberLabel)
                             .font(theme.bodyFont, size: theme.bodyFontSize).bold()
-                        if h.issueDate.isEmpty == false {
+                        if header.issueDate.isEmpty == false {
                             Text(fmt.labels.issueDateLabel)
                                 .font(theme.bodyFont, size: theme.bodyFontSize).bold()
                         }
-                        if h.dueDate != nil {
+                        if header.dueDate != nil {
                             Text(fmt.labels.dueDateLabel)
                                 .font(theme.bodyFont, size: theme.bodyFontSize).bold()
                         }
-                        if h.serviceDate != nil {
+                        if header.serviceDate != nil {
                             Text(fmt.labels.serviceDateLabel)
                                 .font(theme.bodyFont, size: theme.bodyFontSize).bold()
                         }
@@ -841,26 +841,26 @@ enum InvoiceLayoutBuilder {
                         }
                     }
                     ColumnItem(width: .flex) {
-                        Text(": \(h.invoiceNumber)")
+                        Text(": \(header.invoiceNumber)")
                             .font(theme.bodyFont, size: theme.bodyFontSize).bold()
-                        if h.issueDate.isEmpty == false {
-                            Text(": \(h.issueDate)")
+                        if header.issueDate.isEmpty == false {
+                            Text(": \(header.issueDate)")
                                 .font(theme.bodyFont, size: theme.bodyFontSize).bold()
                         }
-                        if let due = h.dueDate {
+                        if let due = header.dueDate {
                             Text(": \(due)")
                                 .font(theme.bodyFont, size: theme.bodyFontSize).bold()
                         }
-                        if let svc = h.serviceDate {
+                        if let svc = header.serviceDate {
                             Text(": \(svc)")
                                 .font(theme.bodyFont, size: theme.bodyFontSize).bold()
                         }
-                        if let cn = invoice.client.clientNumber {
-                            Text(": \(cn)")
+                        if let clientNo = invoice.client.clientNumber {
+                            Text(": \(clientNo)")
                                 .font(theme.bodyFont, size: theme.bodyFontSize).bold()
                         }
-                        if let po = invoice.client.poNumber {
-                            Text(": \(po)")
+                        if let poRef = invoice.client.poNumber {
+                            Text(": \(poRef)")
                                 .font(theme.bodyFont, size: theme.bodyFontSize).bold()
                         }
                     }
@@ -880,7 +880,7 @@ enum InvoiceLayoutBuilder {
                     }
                     Spacer(height: 8)
                 }
-                Text(h.documentTitle)
+                Text(header.documentTitle)
                     .font(theme.titleFont, size: theme.titleFontSize)
                     .bold()
                     .italic()
@@ -926,23 +926,23 @@ enum InvoiceLayoutBuilder {
 
         let lineStyle = TableStyle(
             headerBackground: theme.tableHeaderBackground,
-            headerTextColor:  theme.tableHeaderTextColor,
-            headerFontSize:   theme.tableHeaderFontSize,
-            cellFontSize:     theme.tableCellFontSize,
-            rowHeight:        theme.lineItemRowHeight,
+            headerTextColor: theme.tableHeaderTextColor,
+            headerFontSize: theme.tableHeaderFontSize,
+            cellFontSize: theme.tableCellFontSize,
+            rowHeight: theme.lineItemRowHeight,
             alternateRowColor: theme.tableAlternateRowColor,
-            borderColor:      theme.tableBorderColor,
-            borderWidth:      0.5,
-            cellPadding:      4
+            borderColor: theme.tableBorderColor,
+            borderWidth: 0.5,
+            cellPadding: 4
         )
 
         return Table(data: rows, style: lineStyle, showHeader: showHeader) {
-            Column(fmt.labels.columnDescription, width: .flex,      alignment: .leading)
-            Column(fmt.labels.columnQuantity,    width: .fixed(40), alignment: .trailing, headerAlignment: .trailing)
-            Column(fmt.labels.columnUnitPrice,   width: .fixed(65), alignment: .trailing, headerAlignment: .trailing)
-            Column(fmt.labels.columnDiscount,    width: .fixed(60), alignment: .trailing, headerAlignment: .trailing)
-            Column(fmt.labels.columnTax,         width: .fixed(45), alignment: .trailing, headerAlignment: .trailing)
-            Column(fmt.labels.columnAmount,      width: .fixed(70), alignment: .trailing, headerAlignment: .trailing)
+            Column(fmt.labels.columnDescription, width: .flex, alignment: .leading)
+            Column(fmt.labels.columnQuantity, width: .fixed(40), alignment: .trailing, headerAlignment: .trailing)
+            Column(fmt.labels.columnUnitPrice, width: .fixed(65), alignment: .trailing, headerAlignment: .trailing)
+            Column(fmt.labels.columnDiscount, width: .fixed(60), alignment: .trailing, headerAlignment: .trailing)
+            Column(fmt.labels.columnTax, width: .fixed(45), alignment: .trailing, headerAlignment: .trailing)
+            Column(fmt.labels.columnAmount, width: .fixed(70), alignment: .trailing, headerAlignment: .trailing)
         }
     }
 
@@ -951,41 +951,41 @@ enum InvoiceLayoutBuilder {
         theme: InvoiceTheme,
         fmt: InvoiceFormatter
     ) -> some PDFContent {
-        let t = invoice.totals
+        let totals = invoice.totals
         var rows: [[String]] = []
 
-        rows.append([fmt.labels.subtotalLabel, "", fmt.money(t.subtotalExcl)])
+        rows.append([fmt.labels.subtotalLabel, "", fmt.money(totals.subtotalExcl)])
 
-        if let disc = t.globalDiscount, disc > 0 {
+        if let disc = totals.globalDiscount, disc > 0 {
             rows.append([fmt.labels.columnDiscount, "", "-\(fmt.money(disc))"])
         }
 
-        rows.append([fmt.labels.vatLabel, "", fmt.money(t.totalVat)])
+        rows.append([fmt.labels.vatLabel, "", fmt.money(totals.totalVat)])
 
-        if let paid = t.amountPaid, paid > 0 {
-            rows.append([fmt.labels.totalLabel, "", fmt.money(t.totalIncl)])
+        if let paid = totals.amountPaid, paid > 0 {
+            rows.append([fmt.labels.totalLabel, "", fmt.money(totals.totalIncl)])
             rows.append([fmt.labels.amountPaidLabel, "", "-\(fmt.money(paid))"])
-            rows.append([fmt.labels.amountDueLabel, "", fmt.money(t.amountDue)])
+            rows.append([fmt.labels.amountDueLabel, "", fmt.money(totals.amountDue)])
         } else {
-            rows.append([fmt.labels.totalLabel, "", fmt.money(t.totalIncl)])
+            rows.append([fmt.labels.totalLabel, "", fmt.money(totals.totalIncl)])
         }
 
         let totalsStyle = TableStyle(
             headerBackground: theme.tableHeaderBackground,
-            headerTextColor:  theme.tableHeaderTextColor,
-            headerFontSize:   theme.tableHeaderFontSize,
-            cellFontSize:     theme.tableCellFontSize,
-            rowHeight:        theme.totalsRowHeight,
+            headerTextColor: theme.tableHeaderTextColor,
+            headerFontSize: theme.tableHeaderFontSize,
+            cellFontSize: theme.tableCellFontSize,
+            rowHeight: theme.totalsRowHeight,
             alternateRowColor: nil,
-            borderColor:      theme.tableBorderColor,
-            borderWidth:      0.5,
-            cellPadding:      4,
-            cellBold:         true
+            borderColor: theme.tableBorderColor,
+            borderWidth: 0.5,
+            cellPadding: 4,
+            cellBold: true
         )
 
         return Table(data: rows, style: totalsStyle, showHeader: false) {
-            Column("", width: .flex,       alignment: .leading)
-            Column("", width: .flex,       alignment: .leading)
+            Column("", width: .flex, alignment: .leading)
+            Column("", width: .flex, alignment: .leading)
             Column("", width: .fixed(100), alignment: .trailing)
         }
     }
@@ -1000,20 +1000,20 @@ enum InvoiceLayoutBuilder {
                 fmt.percent(row.ratePercent),
                 fmt.money(row.taxableBase),
                 fmt.money(row.taxAmount),
-                row.exemptionReason ?? "",
+                row.exemptionReason ?? ""
             ]
         }
 
         let style = TableStyle(
             headerBackground: theme.tableHeaderBackground,
-            headerTextColor:  theme.tableHeaderTextColor,
-            headerFontSize:   theme.tableHeaderFontSize,
-            cellFontSize:     theme.tableCellFontSize,
-            rowHeight:        theme.totalsRowHeight,
+            headerTextColor: theme.tableHeaderTextColor,
+            headerFontSize: theme.tableHeaderFontSize,
+            cellFontSize: theme.tableCellFontSize,
+            rowHeight: theme.totalsRowHeight,
             alternateRowColor: nil,
-            borderColor:      theme.tableBorderColor,
-            borderWidth:      0.5,
-            cellPadding:      4
+            borderColor: theme.tableBorderColor,
+            borderWidth: 0.5,
+            cellPadding: 4
         )
 
         return Columns(spacing: 0) {
@@ -1022,10 +1022,13 @@ enum InvoiceLayoutBuilder {
                     .font(theme.bodyFont, size: theme.bodyFontSize).bold()
                 Spacer(height: 4)
                 Table(data: rows, style: style, showHeader: true) {
-                    Column(fmt.labels.columnTaxRate,         width: .fixed(60), alignment: .trailing, headerAlignment: .trailing)
-                    Column(fmt.labels.columnTaxableBase,     width: .fixed(90), alignment: .trailing, headerAlignment: .trailing)
-                    Column(fmt.labels.columnTax,             width: .fixed(90), alignment: .trailing, headerAlignment: .trailing)
-                    Column(fmt.labels.columnExemptionReason, width: .flex,      alignment: .leading)
+                    Column(fmt.labels.columnTaxRate, width: .fixed(60),
+                           alignment: .trailing, headerAlignment: .trailing)
+                    Column(fmt.labels.columnTaxableBase, width: .fixed(90),
+                           alignment: .trailing, headerAlignment: .trailing)
+                    Column(fmt.labels.columnTax, width: .fixed(90),
+                           alignment: .trailing, headerAlignment: .trailing)
+                    Column(fmt.labels.columnExemptionReason, width: .flex, alignment: .leading)
                 }
             }
         }
@@ -1041,20 +1044,20 @@ enum InvoiceLayoutBuilder {
                 row.method,
                 fmt.date(row.date),
                 fmt.money(row.amount),
-                row.receiptNumber ?? "",
+                row.receiptNumber ?? ""
             ]
         }
 
         let style = TableStyle(
             headerBackground: theme.tableHeaderBackground,
-            headerTextColor:  theme.tableHeaderTextColor,
-            headerFontSize:   theme.tableHeaderFontSize,
-            cellFontSize:     theme.tableCellFontSize,
-            rowHeight:        theme.totalsRowHeight,
+            headerTextColor: theme.tableHeaderTextColor,
+            headerFontSize: theme.tableHeaderFontSize,
+            cellFontSize: theme.tableCellFontSize,
+            rowHeight: theme.totalsRowHeight,
             alternateRowColor: nil,
-            borderColor:      theme.tableBorderColor,
-            borderWidth:      0.5,
-            cellPadding:      4
+            borderColor: theme.tableBorderColor,
+            borderWidth: 0.5,
+            cellPadding: 4
         )
 
         return Columns(spacing: 0) {
@@ -1063,10 +1066,13 @@ enum InvoiceLayoutBuilder {
                     .font(theme.bodyFont, size: theme.bodyFontSize).bold()
                 Spacer(height: 4)
                 Table(data: rows, style: style, showHeader: true) {
-                    Column(fmt.labels.columnPaymentMethod, width: .flex,      alignment: .leading)
-                    Column(fmt.labels.columnPaymentDate,   width: .fixed(80), alignment: .trailing, headerAlignment: .trailing)
-                    Column(fmt.labels.columnAmount,        width: .fixed(80), alignment: .trailing, headerAlignment: .trailing)
-                    Column(fmt.labels.columnReceiptNumber, width: .fixed(90), alignment: .trailing, headerAlignment: .trailing)
+                    Column(fmt.labels.columnPaymentMethod, width: .flex, alignment: .leading)
+                    Column(fmt.labels.columnPaymentDate, width: .fixed(80),
+                           alignment: .trailing, headerAlignment: .trailing)
+                    Column(fmt.labels.columnAmount, width: .fixed(80),
+                           alignment: .trailing, headerAlignment: .trailing)
+                    Column(fmt.labels.columnReceiptNumber, width: .fixed(90),
+                           alignment: .trailing, headerAlignment: .trailing)
                 }
             }
         }
@@ -1101,7 +1107,9 @@ enum InvoiceLayoutBuilder {
                     }
                     if let iban = invoice.supplier.iban {
                         Spacer(height: 4)
-                        Text("\(fmt.labels.ibanLabel): \(iban)\(invoice.supplier.bic.map { "  \(fmt.labels.bicLabel): \($0)" } ?? "")")
+                        let bicSuffix = invoice.supplier.bic
+                            .map { "  \(fmt.labels.bicLabel): \($0)" } ?? ""
+                        Text("\(fmt.labels.ibanLabel): \(iban)\(bicSuffix)")
                             .font(theme.bodyFont, size: 9)
                     }
                 }
