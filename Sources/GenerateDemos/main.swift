@@ -292,7 +292,7 @@ do {
         ),
         supplier: demoSupplier, client: demoClient, lines: Array(demoLines.prefix(8)), footer: demoFooter
     )
-    try write(PDF(layout: .classicWithSidebar, invoice: inv08, theme: .corporate), name: "Demo08_Sidebar.pdf")
+    try write(PDF(layout: .modern, invoice: inv08, theme: .corporate), name: "Demo08_Sidebar.pdf")
 
     // MARK: Demo 09 — Minimal
     let inv09 = InvoiceDocument(
@@ -311,7 +311,7 @@ do {
         ],
         footer: demoFooter
     )
-    try write(PDF(layout: .minimal, invoice: inv09, theme: .standard), name: "Demo09_Minimal.pdf")
+    try write(PDF(layout: .modern, invoice: inv09, theme: .standard), name: "Demo09_Minimal.pdf")
 
     // MARK: Demo 10 — Stacked / teal
     let teal = PDFColor(red: 0.0, green: 0.49, blue: 0.49)
@@ -335,7 +335,7 @@ do {
         ),
         supplier: demoSupplier, client: demoClient, lines: Array(demoLines.prefix(6)), footer: demoFooter
     )
-    try write(PDF(layout: .stacked, invoice: inv10, theme: theme10), name: "Demo10_Stacked.pdf")
+    try write(PDF(layout: .modern, invoice: inv10, theme: theme10), name: "Demo10_Stacked.pdf")
 
     // MARK: Demo 11 — Summary-first / gold
     let inv11 = InvoiceDocument(
@@ -349,7 +349,7 @@ do {
         ),
         supplier: demoSupplier, client: demoClient, lines: demoLines, footer: demoFooter
     )
-    try write(PDF(layout: .summaryFirst, invoice: inv11, theme: .gold), name: "Demo11_SummaryFirst.pdf")
+    try write(PDF(layout: .modern, invoice: inv11, theme: .gold), name: "Demo11_SummaryFirst.pdf")
 
     // MARK: Demo 12 — Quote / classic / standard
     let inv12 = InvoiceDocument(

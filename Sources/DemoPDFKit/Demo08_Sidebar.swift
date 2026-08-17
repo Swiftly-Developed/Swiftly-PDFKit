@@ -21,7 +21,7 @@ import SwiftlyPDFKitUI
     footer: demoFooter
 )
 
-@MainActor private let pdf08 = PDF(layout: .classicWithSidebar, invoice: invoice08, theme: .corporate)
+@MainActor private let pdf08 = PDF(layout: .modern, invoice: invoice08, theme: .corporate)
 
 @available(macOS 14, iOS 17, *)
 #Preview("08 · Classic + Sidebar", traits: .fixedLayout(width: 595, height: 842)) {
