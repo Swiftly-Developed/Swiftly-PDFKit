@@ -295,6 +295,16 @@ public struct InvoiceDocument: Sendable {
     public var totals: InvoiceTotals
     /// Optional footer pinned to the bottom of every page.
     public var footer: InvoiceFooter?
+    /// Optional delivery address, rendered when it differs from the billing address.
+    public var shipTo: InvoiceParty?
+    /// Optional per-rate tax breakdown rows (one per distinct tax rate).
+    public var taxBreakdown: [InvoiceTaxSubtotal]?
+    /// Optional free-text tax note (e.g. an exemption or margin-scheme mention).
+    public var taxNote: String?
+    /// Optional settlement state driving the paid/due headline.
+    public var paymentState: InvoicePaymentState?
+    /// Optional payment-history rows (payments already received against this document).
+    public var paymentHistory: [InvoicePaymentRow]?
 
     /// Memberwise initialiser. `totals` defaults to values computed from `lines`.
     public init(
@@ -303,7 +313,12 @@ public struct InvoiceDocument: Sendable {
         client: InvoiceClient,
         lines: [InvoiceLine],
         totals: InvoiceTotals? = nil,
-        footer: InvoiceFooter? = nil
+        footer: InvoiceFooter? = nil,
+        shipTo: InvoiceParty? = nil,
+        taxBreakdown: [InvoiceTaxSubtotal]? = nil,
+        taxNote: String? = nil,
+        paymentState: InvoicePaymentState? = nil,
+        paymentHistory: [InvoicePaymentRow]? = nil
     ) {
         self.header = header
         self.supplier = supplier
@@ -311,5 +326,10 @@ public struct InvoiceDocument: Sendable {
         self.lines = lines
         self.totals = totals ?? InvoiceTotals(lines: lines)
         self.footer = footer
+        self.shipTo = shipTo
+        self.taxBreakdown = taxBreakdown
+        self.taxNote = taxNote
+        self.paymentState = paymentState
+        self.paymentHistory = paymentHistory
     }
 }
