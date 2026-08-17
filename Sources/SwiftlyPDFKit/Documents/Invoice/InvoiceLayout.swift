@@ -1,36 +1,22 @@
 import Foundation
-#if canImport(CoreGraphics)
-import CoreGraphics
-#endif
 
 // MARK: - InvoiceLayoutType
 
-/// Built-in invoice page layouts.
+/// Built-in invoice layout families.
 ///
-/// Each case produces a different visual arrangement of the invoice sections
-/// from the same ``InvoiceDocument`` data.
+/// Each case selects a layout family rendered from the same
+/// ``InvoiceDocument`` data. The three families currently share one
+/// provisional arrangement rendering the full block superset; the
+/// per-family visual grammar is a later reference-derived deliverable.
 public enum InvoiceLayoutType: Sendable {
-    /// Classic single-column layout.
-    ///
-    /// - Logo and supplier address in a two-column header
-    /// - Invoice metadata (number, dates) in a two-column block
-    /// - Line-items table
-    /// - Totals summary row
-    /// - Optional QR code + payment reference banner
-    /// - Optional footer
+    /// Contemporary family: the refreshed, accent-forward invoice look.
+    case modern
+
+    /// Traditional family: the conservative single-column invoice look.
     case classic
 
-    /// Like ``classic`` but adds a full-height accent bar on the left edge of every page.
-    case classicWithSidebar
-
-    /// Minimalist layout: no table borders, generous whitespace, plain-text totals.
-    case minimal
-
-    /// Stacked layout: supplier and client stacked vertically below a full-width title banner.
-    case stacked
-
-    /// Summary-first layout: page 1 shows totals and payment only; line items start on page 2.
-    case summaryFirst
+    /// Compact family: the condensed, receipt-style invoice look.
+    case receipt
 }
 
 // MARK: - PDF + Invoice factory
@@ -45,32 +31,33 @@ public extension PDF {
     /// ```
     ///
     /// - Parameters:
-    ///   - layout: The page arrangement to use.
+    ///   - layout: The layout family to render.
     ///   - invoice: The data model containing all invoice content.
     ///   - theme: Visual configuration (colors, fonts, logo size). Defaults to ``InvoiceTheme/standard``.
+    ///   - labels: Every fixed rendered string. Defaults to ``InvoiceLabels/english``;
+    ///     hosts supply a localized instance.
+    ///   - locale: Drives date and currency formatting. Defaults to `en_US`
+    ///     (the package-standalone fallback — never the device locale);
+    ///     hosts pass the document's resolved locale.
     ///   - pageSize: Paper size. Defaults to A4.
     init(
         layout: InvoiceLayoutType,
         invoice: InvoiceDocument,
         theme: InvoiceTheme = .standard,
+        labels: InvoiceLabels = .english,
+        locale: Locale = Locale(identifier: "en_US"),
         pageSize: PageSize = .a4
     ) {
         switch layout {
+        case .modern:
+            self = InvoiceLayoutBuilder.modernLayout(
+                invoice: invoice, theme: theme, labels: labels, locale: locale, pageSize: pageSize)
         case .classic:
             self = InvoiceLayoutBuilder.classicLayout(
-                invoice: invoice, theme: theme, pageSize: pageSize)
-        case .classicWithSidebar:
-            self = InvoiceLayoutBuilder.classicWithSidebarLayout(
-                invoice: invoice, theme: theme, pageSize: pageSize)
-        case .minimal:
-            self = InvoiceLayoutBuilder.minimalLayout(
-                invoice: invoice, theme: theme, pageSize: pageSize)
-        case .stacked:
-            self = InvoiceLayoutBuilder.stackedLayout(
-                invoice: invoice, theme: theme, pageSize: pageSize)
-        case .summaryFirst:
-            self = InvoiceLayoutBuilder.summaryFirstLayout(
-                invoice: invoice, theme: theme, pageSize: pageSize)
+                invoice: invoice, theme: theme, labels: labels, locale: locale, pageSize: pageSize)
+        case .receipt:
+            self = InvoiceLayoutBuilder.receiptLayout(
+                invoice: invoice, theme: theme, labels: labels, locale: locale, pageSize: pageSize)
         }
     }
 }
