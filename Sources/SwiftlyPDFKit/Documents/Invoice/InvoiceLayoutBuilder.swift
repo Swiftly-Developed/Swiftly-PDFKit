@@ -196,8 +196,14 @@ enum InvoiceLayoutBuilder {
         theme: InvoiceTheme,
         alignment: TextAlignment = .leading
     ) -> any PDFContent {
+        // `alignment` must reach the image, not just the text fallback:
+        // ImageContent has honoured it since v0.2.1, but this call site dropped
+        // it, so a supplier WITH a logo always rendered flush left however the
+        // caller asked. Invisible whenever the fallback initials are used —
+        // which is every demo without a logoPath, and every probe.
         if let path = supplier.logoPath,
-           let img = ImageContent(path: path, maxWidth: theme.logoMaxWidth, maxHeight: theme.logoMaxHeight) {
+           let img = ImageContent(path: path, maxWidth: theme.logoMaxWidth,
+                                  maxHeight: theme.logoMaxHeight, alignment: alignment) {
             return img
         }
         // Fallback: initials or company name in accent color
@@ -469,48 +475,6 @@ enum InvoiceLayoutBuilder {
     }
 
     // MARK: - Roster builders (v0.3.0)
-
-    /// Entry point of the contemporary family. Provisional: delegates to the
-    /// shared superset renderer until the reference-derived per-family design
-    /// lands.
-    static func modernLayout(
-        invoice: InvoiceDocument,
-        theme: InvoiceTheme,
-        labels: InvoiceLabels,
-        locale: Locale,
-        pageSize: PageSize
-    ) -> PDF {
-        supersetLayout(
-            invoice: invoice, theme: theme, labels: labels, locale: locale, pageSize: pageSize)
-    }
-
-    /// Entry point of the traditional single-column family. Provisional:
-    /// delegates to the shared superset renderer until the reference-derived
-    /// per-family design lands.
-    static func classicLayout(
-        invoice: InvoiceDocument,
-        theme: InvoiceTheme,
-        labels: InvoiceLabels,
-        locale: Locale,
-        pageSize: PageSize
-    ) -> PDF {
-        supersetLayout(
-            invoice: invoice, theme: theme, labels: labels, locale: locale, pageSize: pageSize)
-    }
-
-    /// Entry point of the compact receipt family. Provisional: delegates to
-    /// the shared superset renderer until the reference-derived per-family
-    /// design lands.
-    static func receiptLayout(
-        invoice: InvoiceDocument,
-        theme: InvoiceTheme,
-        labels: InvoiceLabels,
-        locale: Locale,
-        pageSize: PageSize
-    ) -> PDF {
-        supersetLayout(
-            invoice: invoice, theme: theme, labels: labels, locale: locale, pageSize: pageSize)
-    }
 
     // MARK: - Shared provisional superset renderer
 

@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftlyPDFKit
 import SwiftlyPDFKitUI
 
-// MARK: - Demo 11 · Summary-first layout · gold theme
+// MARK: - Demo 11 · Receipt family · settled state
 
 @MainActor private let invoice11 = InvoiceDocument(
     header: InvoiceHeader(

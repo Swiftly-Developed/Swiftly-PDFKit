@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftlyPDFKit
 import SwiftlyPDFKitUI
 
-// MARK: - Demo 10 · Stacked layout · teal theme
+// MARK: - Demo 10 · Modern family · tenant brand accent
 
 @MainActor private var tealTheme: InvoiceTheme = {
     let teal = PDFColor(red: 0.0, green: 0.49, blue: 0.49)

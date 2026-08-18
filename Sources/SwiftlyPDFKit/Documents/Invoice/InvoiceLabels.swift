@@ -31,6 +31,10 @@ public struct InvoiceLabels: Sendable {
     public var documentTitleCreditNote: String
     /// Title rendered for a proforma invoice.
     public var documentTitleProforma: String
+    /// Title rendered for a settled document (the Receipt family, and the
+    /// paid state of the Modern family — both reference paid samples title
+    /// the page "Receipt", not "Invoice").
+    public var documentTitleReceipt: String
 
     // MARK: Line-table column headers
 
@@ -44,6 +48,14 @@ public struct InvoiceLabels: Sendable {
     public var columnTax: String
     /// Header of the line-amount column.
     public var columnAmount: String
+    /// Header of the unit-of-measure column (Classic's 7-column grid).
+    public var columnUnit: String
+    /// Header of the tax-exclusive unit-price column (Classic).
+    public var columnUnitPriceExclTax: String
+    /// Header of the tax-inclusive unit-price column (Classic).
+    public var columnUnitPriceInclTax: String
+    /// Header of the tax-inclusive line-total column (Classic).
+    public var columnTotalInclTax: String
 
     // MARK: Totals labels
 
@@ -103,6 +115,9 @@ public struct InvoiceLabels: Sendable {
     public var ibanLabel: String
     /// Prefix of the supplier bank BIC / SWIFT code.
     public var bicLabel: String
+    /// Prefix of the company registration / legal identifier line (Classic's
+    /// identity grid — distinct from the VAT number).
+    public var registrationIdLabel: String
 
     // MARK: Tax-breakdown table
 
@@ -137,6 +152,10 @@ public struct InvoiceLabels: Sendable {
 
     /// Default reverse-charge note (VAT shifted to the recipient).
     public var reverseChargeNote: String
+    /// Header of the free-text note block (Classic renders it bottom-left).
+    public var noteHeader: String
+    /// Decorative acknowledgement rendered as a watermark by the Receipt family.
+    public var thankYouNote: String
 
     // MARK: - English default
 
@@ -152,11 +171,16 @@ public struct InvoiceLabels: Sendable {
         documentTitleInvoice: String = "Invoice",
         documentTitleCreditNote: String = "Credit Note",
         documentTitleProforma: String = "Proforma Invoice",
+        documentTitleReceipt: String = "Receipt",
         columnDescription: String = "Description",
         columnQuantity: String = "Qty",
         columnUnitPrice: String = "Unit price",
         columnTax: String = "Tax",
         columnAmount: String = "Amount",
+        columnUnit: String = "Unit",
+        columnUnitPriceExclTax: String = "Unit price excl. tax",
+        columnUnitPriceInclTax: String = "Unit price incl. tax",
+        columnTotalInclTax: String = "Total incl. tax",
         subtotalLabel: String = "Subtotal",
         totalLabel: String = "Total",
         vatLabel: String = "VAT",
@@ -171,6 +195,8 @@ public struct InvoiceLabels: Sendable {
         dueHeadlineTemplate: String = "{amount} due by {date}",
         pageNumberTemplate: String = "Page {page} of {pages}",
         reverseChargeNote: String = "Reverse charge: VAT to be accounted for by the recipient.",
+        noteHeader: String = "Note",
+        thankYouNote: String = "Thank you.",
         invoiceNumberLabel: String = "Invoice No.",
         issueDateLabel: String = "Date",
         dueDateLabel: String = "Due Date",
@@ -183,6 +209,7 @@ public struct InvoiceLabels: Sendable {
         paymentReferenceLabel: String = "Payment reference",
         ibanLabel: String = "IBAN",
         bicLabel: String = "BIC",
+        registrationIdLabel: String = "Company ID",
         taxBreakdownHeader: String = "Tax breakdown",
         columnTaxRate: String = "Rate",
         columnTaxableBase: String = "Taxable base",
@@ -194,11 +221,16 @@ public struct InvoiceLabels: Sendable {
         self.documentTitleInvoice = documentTitleInvoice
         self.documentTitleCreditNote = documentTitleCreditNote
         self.documentTitleProforma = documentTitleProforma
+        self.documentTitleReceipt = documentTitleReceipt
         self.columnDescription = columnDescription
         self.columnQuantity = columnQuantity
         self.columnUnitPrice = columnUnitPrice
         self.columnTax = columnTax
         self.columnAmount = columnAmount
+        self.columnUnit = columnUnit
+        self.columnUnitPriceExclTax = columnUnitPriceExclTax
+        self.columnUnitPriceInclTax = columnUnitPriceInclTax
+        self.columnTotalInclTax = columnTotalInclTax
         self.subtotalLabel = subtotalLabel
         self.totalLabel = totalLabel
         self.vatLabel = vatLabel
@@ -213,6 +245,8 @@ public struct InvoiceLabels: Sendable {
         self.dueHeadlineTemplate = dueHeadlineTemplate
         self.pageNumberTemplate = pageNumberTemplate
         self.reverseChargeNote = reverseChargeNote
+        self.noteHeader = noteHeader
+        self.thankYouNote = thankYouNote
         self.invoiceNumberLabel = invoiceNumberLabel
         self.issueDateLabel = issueDateLabel
         self.dueDateLabel = dueDateLabel
@@ -225,6 +259,7 @@ public struct InvoiceLabels: Sendable {
         self.paymentReferenceLabel = paymentReferenceLabel
         self.ibanLabel = ibanLabel
         self.bicLabel = bicLabel
+        self.registrationIdLabel = registrationIdLabel
         self.taxBreakdownHeader = taxBreakdownHeader
         self.columnTaxRate = columnTaxRate
         self.columnTaxableBase = columnTaxableBase

@@ -56,6 +56,11 @@ let package = Package(
                 .unsafeFlags(["-enable-testing"]),
             ]
         ),
+        .testTarget(
+            name: "SwiftlyPDFKitTests",
+            dependencies: ["SwiftlyPDFKit"],
+            path: "Tests/SwiftlyPDFKitTests"
+        ),
         .executableTarget(
             name: "GenerateDemos",
             dependencies: ["SwiftlyPDFKit"],

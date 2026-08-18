@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftlyPDFKit
 import SwiftlyPDFKitUI
 
-// MARK: - Demo 08 · Classic + Sidebar · corporate theme
+// MARK: - Demo 08 · Modern family · corporate theme
 
 @MainActor private let invoice08 = InvoiceDocument(
     header: InvoiceHeader(

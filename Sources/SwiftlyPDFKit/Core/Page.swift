@@ -26,6 +26,7 @@ public struct Page {
     public let margins: CGFloat
     let bodyContents: [any PDFContent]
     let footer: Footer?
+    let topAccentBar: TopAccentBar?
 
     public init(
         size: PageSize = .a4,
@@ -36,13 +37,21 @@ public struct Page {
         self.margins = margins
         let all = content()
         self.footer = all.compactMap { $0 as? Footer }.last
-        self.bodyContents = all.filter { !($0 is Footer) }
+        self.topAccentBar = all.compactMap { $0 as? TopAccentBar }.last
+        self.bodyContents = all.filter { !($0 is Footer) && !($0 is TopAccentBar) }
     }
 
     // MARK: CoreGraphics Rendering
 
     #if canImport(CoreGraphics)
     public func render(in context: CGContext) {
+        if let bar = topAccentBar {
+            context.saveGState()
+            context.setFillColor(bar.color.cgColor)
+            context.fill(CGRect(x: 0, y: size.height - bar.height,
+                                width: size.width, height: bar.height))
+            context.restoreGState()
+        }
         let footerHeight = footer?.height ?? 0
         let bodyBounds = CGRect(
             x: margins,
@@ -103,6 +112,10 @@ public struct Page {
         html += "<div class=\"body\" style=\"min-height:\(bodyHeight)pt;\">"
         html += bodyHTML
         html += "</div>"
+        if let bar = topAccentBar {
+            html += "<div class=\"top-accent-bar\" style=\"position:absolute;top:0;left:0;"
+            html += "width:100%;height:\(bar.height)pt;background:\(bar.color.cssRGBA);\"></div>"
+        }
         if !footerHTML.isEmpty {
             html += "<div class=\"footer\" style=\"position:absolute;bottom:\(margins)pt;"
             html += "left:\(margins)pt;right:\(margins)pt;height:\(footerHeight)pt;\">"
