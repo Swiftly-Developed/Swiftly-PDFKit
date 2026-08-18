@@ -36,6 +36,23 @@ public struct PDFColor: Sendable {
         self.alpha = alpha
     }
 
+    /// Parses a `#RRGGBB` hex string (leading `#` optional) into an opaque color.
+    ///
+    /// Returns `nil` for any other shape (wrong length, non-hex characters) —
+    /// the seam through which a host injects a stored brand color string.
+    public init?(hex: String) {
+        var digits = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if digits.hasPrefix("#") { digits.removeFirst() }
+        guard digits.count == 6,
+              digits.allSatisfy(\.isHexDigit),
+              let value = UInt32(digits, radix: 16) else { return nil }
+        self.init(
+            red: CGFloat((value >> 16) & 0xFF) / 255,
+            green: CGFloat((value >> 8) & 0xFF) / 255,
+            blue: CGFloat(value & 0xFF) / 255
+        )
+    }
+
     /// Cross-platform RGBA component access.
     public var components: (r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat) {
         (red, green, blue, alpha)

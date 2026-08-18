@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftlyPDFKit
 import SwiftlyPDFKitUI
 
-// MARK: - Demo 10 · Stacked layout · teal theme
+// MARK: - Demo 10 · Modern family · tenant brand accent
 
 @MainActor private var tealTheme: InvoiceTheme = {
     let teal = PDFColor(red: 0.0, green: 0.49, blue: 0.49)
@@ -36,7 +36,7 @@ import SwiftlyPDFKitUI
     footer: demoFooter
 )
 
-@MainActor private let pdf10 = PDF(layout: .stacked, invoice: invoice10, theme: tealTheme)
+@MainActor private let pdf10 = PDF(layout: .modern, invoice: invoice10, theme: tealTheme)
 
 @available(macOS 14, iOS 17, *)
 #Preview("10 · Stacked", traits: .fixedLayout(width: 595, height: 842)) {

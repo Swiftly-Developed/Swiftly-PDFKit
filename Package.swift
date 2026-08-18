@@ -6,6 +6,7 @@ let package = Package(
     platforms: [
         .macOS(.v12),
         .iOS(.v15),
+        .tvOS(.v15),
     ],
     products: [
         .library(
@@ -54,6 +55,11 @@ let package = Package(
             swiftSettings: [
                 .unsafeFlags(["-enable-testing"]),
             ]
+        ),
+        .testTarget(
+            name: "SwiftlyPDFKitTests",
+            dependencies: ["SwiftlyPDFKit"],
+            path: "Tests/SwiftlyPDFKitTests"
         ),
         .executableTarget(
             name: "GenerateDemos",

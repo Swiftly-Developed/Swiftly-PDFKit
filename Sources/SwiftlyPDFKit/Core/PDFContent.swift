@@ -77,6 +77,19 @@ public struct Text: PDFContent {
         var copy = self; copy.fontSize = size; return copy
     }
 
+    /// Overrides the text colour.
+    ///
+    /// The references lean on a muted grey for secondary text — column heads,
+    /// service periods, footnotes, footers — against near-black body copy.
+    /// `textColor` was already a stored property honoured by *both* the
+    /// CoreGraphics and HTML render paths; only the public modifier was
+    /// missing, so this adds no rendering behaviour, just reach.
+    public func color(_ c: PDFColor) -> Text {
+        var copy = self
+        copy.textColor = c
+        return copy
+    }
+
     public func alignment(_ a: TextAlignment) -> Text {
         var copy = self; copy.alignment = a; return copy
     }
