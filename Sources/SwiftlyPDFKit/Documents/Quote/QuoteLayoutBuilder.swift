@@ -13,9 +13,10 @@ enum QuoteLayoutBuilder {
         invoice: InvoiceDocument,
         supplement: QuoteSupplement,
         theme: InvoiceTheme,
+        locale: Locale,
         pageSize: PageSize
     ) -> PDF {
-        let fmt = InvoiceFormatter(theme: theme)
+        let fmt = DocumentFormatter(theme: theme, locale: locale)
 
         // ── Height accounting ──────────────────────────────────────────────
         let rowH:          CGFloat = theme.lineItemRowHeight
@@ -136,6 +137,7 @@ enum QuoteLayoutBuilder {
         invoice: InvoiceDocument,
         supplement: QuoteSupplement,
         theme: InvoiceTheme,
+        locale: Locale,
         pageSize: PageSize
     ) -> PDF {
         // Build a minimal-style theme override (no table borders, larger row height).
@@ -163,7 +165,8 @@ enum QuoteLayoutBuilder {
         )
         // Delegate to classic with the minimal theme overrides applied.
         return classicLayout(
-            invoice: invoice, supplement: supplement, theme: minimalTheme, pageSize: pageSize)
+            invoice: invoice, supplement: supplement, theme: minimalTheme, locale: locale,
+            pageSize: pageSize)
     }
 
     // MARK: - Section helpers
@@ -172,7 +175,7 @@ enum QuoteLayoutBuilder {
         invoice: InvoiceDocument,
         supplement: QuoteSupplement,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let h = invoice.header
         return Columns(spacing: 20) {
@@ -254,7 +257,7 @@ enum QuoteLayoutBuilder {
     static func quoteTotalsTable(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let t = invoice.totals
         let currency = invoice.header.currency

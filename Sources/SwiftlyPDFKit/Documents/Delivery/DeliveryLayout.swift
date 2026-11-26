@@ -26,18 +26,23 @@ public extension PDF {
     ///   - invoice: The data model (reused from the invoice system).
     ///   - supplement: Delivery-specific extra fields (ship-to address, signature).
     ///   - theme: Visual configuration. Defaults to ``InvoiceTheme/standard``.
+    ///   - locale: Drives number formatting (amounts, quantities, rates). Defaults
+    ///     to `en_US` (the package-standalone fallback — never the device locale);
+    ///     hosts pass the document's resolved recipient locale.
     ///   - pageSize: Paper size. Defaults to A4.
     init(
         deliveryLayout: DeliveryLayoutType,
         invoice: InvoiceDocument,
         supplement: DeliverySupplement = DeliverySupplement(),
         theme: InvoiceTheme = .standard,
+        locale: Locale = Locale(identifier: "en_US"),
         pageSize: PageSize = .a4
     ) {
         switch deliveryLayout {
         case .standard:
             self = DeliveryLayoutBuilder.standardLayout(
-                invoice: invoice, supplement: supplement, theme: theme, pageSize: pageSize)
+                invoice: invoice, supplement: supplement, theme: theme, locale: locale,
+                pageSize: pageSize)
         }
     }
 }

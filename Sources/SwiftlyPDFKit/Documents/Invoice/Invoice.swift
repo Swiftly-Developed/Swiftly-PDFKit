@@ -78,6 +78,9 @@ public struct InvoiceClient: Sendable {
     public var clientNumber: String?
     /// Client's purchase order reference.
     public var poNumber: String?
+    /// Company registration / legal ID of the client (e.g. KBO number),
+    /// rendered under the registration-ID label. `nil` omits the row.
+    public var registrationNumber: String?
 
     public init(
         name: String,
@@ -87,7 +90,8 @@ public struct InvoiceClient: Sendable {
         country: String? = nil,
         vatNumber: String? = nil,
         clientNumber: String? = nil,
-        poNumber: String? = nil
+        poNumber: String? = nil,
+        registrationNumber: String? = nil
     ) {
         self.name = name
         self.attention = attention
@@ -97,6 +101,7 @@ public struct InvoiceClient: Sendable {
         self.vatNumber = vatNumber
         self.clientNumber = clientNumber
         self.poNumber = poNumber
+        self.registrationNumber = registrationNumber
     }
 }
 
@@ -305,6 +310,11 @@ public struct InvoiceDocument: Sendable {
     public var paymentState: InvoicePaymentState?
     /// Optional payment-history rows (payments already received against this document).
     public var paymentHistory: [InvoicePaymentRow]?
+    /// `true` for a document that requests no payment (e.g. a purchase
+    /// order): every layout omits the due-date row, the paid/due headline,
+    /// the closing "Amount Due" totals row and the payment block. `false`
+    /// (the default) renders exactly as before.
+    public var hidesSettlement: Bool
 
     /// Memberwise initialiser. `totals` defaults to values computed from `lines`.
     public init(
@@ -318,7 +328,8 @@ public struct InvoiceDocument: Sendable {
         taxBreakdown: [InvoiceTaxSubtotal]? = nil,
         taxNote: String? = nil,
         paymentState: InvoicePaymentState? = nil,
-        paymentHistory: [InvoicePaymentRow]? = nil
+        paymentHistory: [InvoicePaymentRow]? = nil,
+        hidesSettlement: Bool = false
     ) {
         self.header = header
         self.supplier = supplier
@@ -331,5 +342,6 @@ public struct InvoiceDocument: Sendable {
         self.taxNote = taxNote
         self.paymentState = paymentState
         self.paymentHistory = paymentHistory
+        self.hidesSettlement = hidesSettlement
     }
 }

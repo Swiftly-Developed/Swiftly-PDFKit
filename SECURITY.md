@@ -25,7 +25,7 @@ We will acknowledge your report within 48 hours and aim to release a fix within 
 SwiftlyPDFKit is a PDF generation library. Potential security concerns include:
 
 - **Path traversal** in `ImageContent(path:)` — file paths are passed directly to CoreGraphics (Darwin) or read for base64 encoding (Linux)
-- **Shell injection** (Linux) — `HTMLToPDFConverter` invokes `wkhtmltopdf` via `Foundation.Process`; page dimensions are numeric only, but untrusted HTML content could be a concern
+- **Shell injection** (Linux) — `HTMLToPDFConverter` invokes `wkhtmltopdf` via `Foundation.Process`, and additionally execs `wkhtmltopdf --version` once per process to detect the Qt build (no caller input reaches that call); page dimensions remain numeric only (an interpolated `CGFloat` plus a fixed `pt` suffix), but untrusted HTML content could be a concern
 - **Memory exhaustion** — extremely large documents or data sets
 - **Malformed input** — unexpected characters in text rendering; HTML output uses `String.htmlEscaped` to mitigate injection
 

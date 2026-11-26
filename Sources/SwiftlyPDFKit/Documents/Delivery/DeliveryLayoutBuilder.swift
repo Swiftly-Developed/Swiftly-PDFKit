@@ -13,9 +13,10 @@ enum DeliveryLayoutBuilder {
         invoice: InvoiceDocument,
         supplement: DeliverySupplement,
         theme: InvoiceTheme,
+        locale: Locale,
         pageSize: PageSize
     ) -> PDF {
-        let fmt = InvoiceFormatter(theme: theme)
+        let fmt = DocumentFormatter(theme: theme, locale: locale)
 
         // ── Height accounting ──────────────────────────────────────────────
         let rowH:         CGFloat = theme.lineItemRowHeight
@@ -180,7 +181,7 @@ enum DeliveryLayoutBuilder {
     static func deliveryMetaSection(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let h = invoice.header
         return Columns(spacing: 20) {

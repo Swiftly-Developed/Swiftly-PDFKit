@@ -15,7 +15,7 @@ A pure-Swift PDF generation library with a declarative DSL. Build pixel-perfect 
 - **Declarative DSL** &mdash; Result-builder syntax for pages, text, tables, columns, and more
 - **Cross-platform** &mdash; CoreGraphics on Apple platforms, HTML-to-PDF on Linux; no AppKit or UIKit dependency
 - **Invoice engine** &mdash; 5 built-in layouts with automatic multi-page pagination
-- **Business documents** &mdash; Quotes, sales orders, delivery notes, and shipment documents
+- **Business documents** &mdash; Quotes, sales orders, and delivery notes
 - **Themeable** &mdash; 3 built-in themes + fully customizable colors, fonts, and spacing
 - **QR codes** &mdash; SEPA/EPC QR and arbitrary payloads via pure-Swift generation
 - **SwiftUI previews** &mdash; Live Xcode canvas previews with `PDFPreviewView`
@@ -234,16 +234,21 @@ let invoice = InvoiceDocument(header: ..., supplier: ..., client: ...,
 
 ### Layouts
 
+<!-- SUPERSEDED 2026-09-09 by the PRINT01 Step 10 doc-steward, retiring a DOCUMENTS03 straggler.
+     This table previously listed FIVE `InvoiceLayoutType` cases (`.classic`,
+     `.classicWithSidebar`, `.minimal`, `.stacked`, `.summaryFirst`) and the example built a PDF
+     with `layout: .minimal`. DOCUMENTS03 replaced the enum with three families; four of those
+     five spellings no longer compile, and the example was uncompilable copy-paste.
+     Full prior text: docs/archive/DOCUMENTS03.md §10. Do not restore. -->
+
 | Layout | Description |
 |--------|-------------|
+| `.modern` | **Default.** Contemporary, accent-forward: full-bleed top accent bar, hairline table, VAT breakdown |
 | `.classic` | Two-column header, metadata grid, line-items table, totals, QR + payment banner |
-| `.classicWithSidebar` | Classic layout with a full-height accent-colored bar on the left edge |
-| `.minimal` | Borderless tables, generous whitespace, plain-text totals |
-| `.stacked` | Full-width title banner, vertically stacked supplier and client blocks |
-| `.summaryFirst` | Page 1 shows totals and payment only; line items start on page 2 |
+| `.receipt` | Condensed receipt grammar; prunes the payment ladder on a paid document |
 
 ```swift
-let pdf = PDF(layout: .minimal, invoice: invoice, theme: .corporate, pageSize: .a4)
+let pdf = PDF(layout: .modern, invoice: invoice, theme: .corporate, pageSize: .a4)
 ```
 
 All layouts handle **automatic multi-page pagination**: line items overflow gracefully across pages, and totals/payment sections are guaranteed their own space (bumping to a new page if needed).
@@ -274,7 +279,7 @@ theme.lineItemRowHeight = 24
 
 ## Business documents
 
-Beyond invoices, SwiftlyPDFKit supports four additional document types. All share the `InvoiceDocument` data model and add a type-specific supplement for extra fields.
+Beyond invoices, SwiftlyPDFKit renders quotations, sales orders, delivery notes, payment receipts, purchase orders and remittance advices. The quotation, sales order and delivery note share the `InvoiceDocument` data model and add a type-specific supplement for extra fields; the payment receipt, the purchase order and the remittance advice have their own models — `PaymentReceiptDocument`, because a payment has no line items and no VAT, `PurchaseOrderDocument`, because the issuer is the buyer, and `RemittanceAdviceDocument`, because the issuer is the payer.
 
 ### Quotation
 
@@ -316,21 +321,35 @@ let pdf = PDF(deliveryLayout: .standard, invoice: invoice, supplement: supplemen
 
 Layouts: `.standard`
 
-### Shipment document
+### Payment receipt
 
 ```swift
-let supplement = ShipmentSupplement(
-    carrier: "DHL Express",
-    trackingNumber: "JJD000390007843164734",
-    shipToAddress: "Warehouse 3\nIndustrial Park\n2000 Antwerp",
-    estimatedDelivery: "2026-03-18",
-    signatureRequired: true
-)
-let pdf = PDF(shipmentLayout: .standard, invoice: invoice, supplement: supplement,
-              theme: .corporate, pageSize: .a4)
+let receipt = PaymentReceiptDocument(supplier: supplier, payer: payer, header: header,
+                                     allocations: allocations, totals: totals)
+let pdf = PaymentReceiptLayout.build(receipt, theme: .standard, pageSize: .a4)
 ```
 
-Layouts: `.standard`, `.compact`
+One layout. Captions come from `PaymentReceiptLabels` (receipt-specific, `.english` by default) and `CommonDocumentLabels` (page numbering, supplier captions). The totals stack always shows the unallocated amount; a reversed payment carries a watermark on every page.
+
+### Purchase order
+
+```swift
+let order = PurchaseOrderDocument(issuer: company, vendor: vendor, header: header,
+                                  lines: lines, taxRows: taxRows, totals: totals)
+let pdf = PurchaseOrderLayout.build(order, theme: .standard, pageSize: .a4)
+```
+
+One layout. Captions come from `PurchaseOrderLabels` (order-specific, `.english` by default) and `CommonDocumentLabels` (page numbering, issuer captions, totals captions); the issuer's bank line is never printed, and a draft or cancelled order carries a watermark on every page.
+
+### Remittance advice
+
+```swift
+let advice = RemittanceAdviceDocument(issuer: company, payee: payee, header: header,
+                                      details: details, totals: totals)
+let pdf = RemittanceAdviceLayout.build(advice, theme: .standard, pageSize: .a4)
+```
+
+One layout, single or batch form (`memberPayments`). Captions come from `RemittanceAdviceLabels` (remittance-only), `PaymentReceiptLabels` (the captions it shares with the receipt) and `CommonDocumentLabels`; one totals stack per currency, and a reversed or not-yet-submitted advice carries a watermark on every page.
 
 > **Tip**: Set `header.documentTitle` to customize the title shown on the document (e.g. "Quotation", "Sales Order Confirmation", "Delivery Note", "Packing Slip").
 
@@ -368,7 +387,7 @@ let pdf = PDF(layout: .classic, invoice: invoice, theme: .standard)
 
 ## Demos
 
-The project includes 15 demo configurations covering every layout, theme, and document type. Each demo has a SwiftUI `#Preview` for the Xcode canvas and a corresponding CLI generator.
+The project includes 17 demo configurations covering every layout, theme, and document type. Each demo has a SwiftUI `#Preview` for the Xcode canvas and a corresponding CLI generator.
 
 | # | Name | Type | Layout | Theme |
 |---|------|------|--------|-------|
@@ -379,14 +398,16 @@ The project includes 15 demo configurations covering every layout, theme, and do
 | 05 | Green | Invoice | classic | custom (logo top-center) |
 | 06 | Partial Payment | Invoice | classic | standard |
 | 07 | Mono | Invoice | classic | custom (Courier, Letter) |
-| 08 | Sidebar | Invoice | classicWithSidebar | corporate |
-| 09 | Minimal | Invoice | minimal | standard |
-| 10 | Stacked | Invoice | stacked | custom (teal) |
-| 11 | Summary First | Invoice | summaryFirst | gold |
+| 08 | ModernCorporate | Invoice | modern | corporate |
+| 09 | ModernStandard | Invoice | modern | standard |
+| 10 | ModernBrandAccent | Invoice | modern | custom (teal) |
+| 11 | ReceiptPaid | Invoice | receipt | gold |
 | 12 | Quote | Quote | classic | standard |
 | 13 | Sales Order | Sales Order | classic | corporate |
 | 14 | Delivery | Delivery | standard | standard |
-| 15 | Shipment | Shipment | standard | corporate |
+| 16 | Payment Receipt | Payment Receipt | — | standard |
+| 17 | Purchase Order | Purchase Order | — | standard |
+| 18 | Remittance Advice | Remittance Advice | — | standard |
 
 ### Generate demo PDFs
 
@@ -394,7 +415,7 @@ The project includes 15 demo configurations covering every layout, theme, and do
 swift run GenerateDemos
 ```
 
-Outputs 15 PDF files to `DemoPDFs/` at the package root.
+Outputs 17 PDF files to `DemoPDFs/` at the package root.
 
 ---
 
@@ -424,15 +445,17 @@ Sources/
         InvoiceTheme.swift    # Theme presets and customization
         InvoiceLayout.swift   # 5 layout implementations
       Shared/
-        DocumentSupplement.swift    # Quote/SalesOrder/Delivery/Shipment supplements
+        DocumentSupplement.swift    # Quote/SalesOrder/Delivery supplements
         DocumentLayoutHelpers.swift # Shared drawing helpers
       Quote/                  # Quote layout + builder
       SalesOrder/             # Sales order layout + builder
       Delivery/               # Delivery note layout + builder
-      Shipment/               # Shipment document layout + builder
+      PaymentReceipt/         # Payment receipt model, labels, layout
+      PurchaseOrder/          # Purchase order model, labels, layout
+      RemittanceAdvice/        # Remittance advice model, labels, layout
   SwiftlyPDFKitUI/
     PDFPreviewView.swift      # SwiftUI wrapper (iOS + macOS)
-  DemoPDFKit/                 # 15 demo files + shared fixtures
+  DemoPDFKit/                 # 17 demo files + shared fixtures
   GenerateDemos/
     main.swift                # CLI tool for batch PDF generation
 ```

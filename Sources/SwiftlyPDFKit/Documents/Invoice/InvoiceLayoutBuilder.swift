@@ -12,7 +12,7 @@ enum InvoiceLayoutBuilder {
     static func headerSection(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let supplier = invoice.supplier
         let client   = invoice.client
@@ -69,7 +69,7 @@ enum InvoiceLayoutBuilder {
         _ lines: [InvoiceLine],
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter,
+        fmt: DocumentFormatter,
         showHeader: Bool
     ) -> some PDFContent {
         let rows = lines.map { line -> [String] in
@@ -106,7 +106,7 @@ enum InvoiceLayoutBuilder {
     static func totalsTable(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let t = invoice.totals
         var rows: [[String]] = []
@@ -150,7 +150,7 @@ enum InvoiceLayoutBuilder {
     static func paymentSection(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let hasQR  = invoice.header.qrPayload != nil
         let hasRef = invoice.header.paymentReference != nil
@@ -222,7 +222,7 @@ enum InvoiceLayoutBuilder {
     static func supplierBlock(
         supplier: InvoiceSupplier,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter,
+        fmt: DocumentFormatter,
         alignment: TextAlignment = .leading
     ) -> some PDFContent {
         return Columns(spacing: 0) {
@@ -247,7 +247,7 @@ enum InvoiceLayoutBuilder {
     static func clientBlock(
         client: InvoiceClient,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         return Columns(spacing: 0) {
             ColumnItem(width: .flex) {
@@ -270,6 +270,10 @@ enum InvoiceLayoutBuilder {
                     Spacer(height: 4)
                     Text("VAT: \(vat)").font(theme.bodyFont, size: theme.bodyFontSize)
                 }
+                if let registration = client.registrationNumber {
+                    Text("\(fmt.labels.registrationIdLabel): \(registration)")
+                        .font(theme.bodyFont, size: theme.bodyFontSize)
+                }
             }
         }
     }
@@ -282,9 +286,10 @@ enum InvoiceLayoutBuilder {
     static func stackedLayout(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
+        locale: Locale,
         pageSize: PageSize
     ) -> PDF {
-        let fmt = InvoiceFormatter(theme: theme)
+        let fmt = DocumentFormatter(theme: theme, locale: locale)
 
         // Page 1 overhead:
         //   title banner (50) + spacer(8) + supplier block (~52) + spacer(8) +
@@ -455,7 +460,7 @@ enum InvoiceLayoutBuilder {
     static func stackedMetaBanner(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter,
+        fmt: DocumentFormatter,
         bannerColor: PDFColor
     ) -> some PDFContent {
         let h = invoice.header
@@ -492,7 +497,7 @@ enum InvoiceLayoutBuilder {
         locale: Locale,
         pageSize: PageSize
     ) -> PDF {
-        let fmt = InvoiceFormatter(
+        let fmt = DocumentFormatter(
             theme: theme,
             locale: locale,
             currencyCode: invoice.header.currency,
@@ -647,7 +652,7 @@ enum InvoiceLayoutBuilder {
     static func supersetHeaderSection(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let supplier = invoice.supplier
         let client   = invoice.client
@@ -701,7 +706,7 @@ enum InvoiceLayoutBuilder {
     static func supersetClientBlock(
         client: InvoiceClient,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         Columns(spacing: 0) {
             ColumnItem(width: .flex) {
@@ -730,6 +735,10 @@ enum InvoiceLayoutBuilder {
                     Text("\(fmt.labels.vatNumberLabel): \(vat)")
                         .font(theme.bodyFont, size: theme.bodyFontSize)
                 }
+                if let registration = client.registrationNumber {
+                    Text("\(fmt.labels.registrationIdLabel): \(registration)")
+                        .font(theme.bodyFont, size: theme.bodyFontSize)
+                }
             }
         }
     }
@@ -737,7 +746,7 @@ enum InvoiceLayoutBuilder {
     static func supersetShipToBlock(
         party: InvoiceParty,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         Columns(spacing: 0) {
             ColumnItem(width: .flex) {
@@ -773,7 +782,7 @@ enum InvoiceLayoutBuilder {
     static func supersetMetaSection(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let header = invoice.header
         return Columns(spacing: 20) {
@@ -857,7 +866,7 @@ enum InvoiceLayoutBuilder {
         state: InvoicePaymentState,
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let headline: String
         switch state {
@@ -876,7 +885,7 @@ enum InvoiceLayoutBuilder {
     static func supersetLineItemsTable(
         _ lines: [InvoiceLine],
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter,
+        fmt: DocumentFormatter,
         showHeader: Bool
     ) -> some PDFContent {
         let rows = lines.map { line -> [String] in
@@ -913,7 +922,7 @@ enum InvoiceLayoutBuilder {
     static func supersetTotalsTable(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let totals = invoice.totals
         var rows: [[String]] = []
@@ -957,7 +966,7 @@ enum InvoiceLayoutBuilder {
     static func supersetTaxBreakdownSection(
         _ breakdown: [InvoiceTaxSubtotal],
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let rows = breakdown.map { row -> [String] in
             [
@@ -1001,7 +1010,7 @@ enum InvoiceLayoutBuilder {
     static func supersetPaymentHistorySection(
         _ history: [InvoicePaymentRow],
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let rows = history.map { row -> [String] in
             [
@@ -1045,7 +1054,7 @@ enum InvoiceLayoutBuilder {
     static func supersetPaymentSection(
         invoice: InvoiceDocument,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let hasQR  = invoice.header.qrPayload != nil
         let hasRef = invoice.header.paymentReference != nil

@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`DocumentLayoutKit`** — a public, family-neutral layout kit under `Core/DocumentLayoutKit/`, so a document family is assembled from shared parts instead of copied from a sibling builder:
+  - The cross-family atoms promoted out of the internal invoice kit: `Pagination` + `paginate(…)`, `hairlineTableStyle(…)`, `clear`, `mutedText`, the six typography constants and `footer(…)`.
+  - Six composition blocks returning `[any PDFContent]` — `supplierIdentityBlock`, `partyBlock`, `metadataGrid`, `signatureBlock`, `totalsBlock` — plus `registerNumber(fromVATID:)`, a BE / FR fallback for a supplier without an explicit commercial-register number.
+- **`LabelSet`** — a one-requirement protocol every family's label struct conforms to; `InvoiceLabels` conforms additively via an empty extension. **`CommonDocumentLabels`** carries the 24 frozen captions the composition blocks render.
+- **`DocumentWatermark`** — a page-level, full-bleed rotated overlay, implemented in *both* of `Page`'s render paths (CoreGraphics and HTML).
+
+### Changed
+
+- **`InvoiceFormatter` is now `DocumentFormatter`** and lives in `Documents/Shared/`. It is no longer invoice-scoped, and it is now `public`. A `typealias InvoiceFormatter = DocumentFormatter` keeps the old spelling compiling.
+- `InvoiceLayoutKit` is reduced to the two genuinely invoice-*state* helpers (`title(for:fmt:)`, `isOutstanding(_:)`).
+
+### Removed
+
+- **The shipment confirmation / dispatch advice document family**, end to end: `ShipmentLayoutType`, its `PDF` factory initialiser, `ShipmentLayoutBuilder`, `ShipmentSupplement`, the `carrierBlock` drawing helper it was the only caller of, demo 15 and its committed artifact. The demo set is now 14.
+
+### Fixed
+
+- **Linux `wkhtmltopdf` output rendered at ≈77 % scale, anchored top-left** (`docs/fixes/2026-09-03-invoice-pdf-linux-smart-shrinking-offcenter.md`):
+  - `HTMLToPDFConverter` now passes the paper size in exact points (`--page-width 595pt`) instead of integer-rounded millimetres, so the `MediaBox` matches the CoreGraphics output exactly (Letter was 1.1pt shorter than its page box).
+  - The converter probes `wkhtmltopdf --version` once per process; an unpatched-Qt build (which ignores `--disable-smart-shrinking`) gets a compensating CSS `body { zoom }` (`smartShrinkingCompensationZoom`, 1.6) via the new internal `PDF.renderHTML(bodyZoom:)`. The public `renderHTML()` output is unchanged.
+  - `Page.renderHTML()` shaves 1pt (`Page.htmlPageBoxSlack`) off each `.page` box so a sub-pixel rounding no longer spills a blank trailing page.
+  - The pure parts of `HTMLToPDFConverter` (`arguments(pageWidth:pageHeight:)`, `isPatchedQt(versionOutput:)`, the zoom constant) now compile on every platform so they can be unit-tested on macOS; the `Process`-spawning half stays Linux-only.
+
 ## [0.2.0] - 2026-02-21
 
 ### Added
