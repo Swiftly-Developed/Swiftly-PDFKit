@@ -34,20 +34,23 @@ extension InvoiceLayoutBuilder {
         locale: Locale,
         pageSize: PageSize
     ) -> PDF {
-        let fmt = InvoiceFormatter(
+        let fmt = DocumentFormatter(
             theme: theme, locale: locale,
             currencyCode: invoice.header.currency, labels: labels)
 
         let lineH = theme.bodyFontSize * 1.2
         let mastheadH: CGFloat = theme.logoMaxHeight
-            + InvoiceLayoutKit.receiptTitleSize * 1.2 + 40
+            + DocumentLayoutKit.receiptTitleSize * 1.2 + 40
         let identityRows: CGFloat = 4
             + (invoice.client.vatNumber != nil ? 1 : 0)
+            + (invoice.client.registrationNumber != nil ? 1 : 0)
             + (invoice.header.paymentReference != nil ? 1 : 0)
+            - (invoice.hidesSettlement ? 1 : 0)   // no due-date row
         let identityH: CGFloat = identityRows * (theme.totalsRowHeight + 2) + 20
         let page1Overhead = mastheadH + identityH
 
         let totalsRows: CGFloat = 3 + ((invoice.totals.amountPaid ?? 0) > 0 ? 1 : 0)
+            - (invoice.hidesSettlement ? 1 : 0)   // no closing due/paid row
         let historyN = invoice.paymentHistory?.count ?? 0
         let bottomH: CGFloat =
             totalsRows * theme.totalsRowHeight + 20
@@ -57,7 +60,7 @@ extension InvoiceLayoutBuilder {
             + 60      // the acknowledgement + footer slack
             + 28
 
-        let plan = InvoiceLayoutKit.paginate(
+        let plan = DocumentLayoutKit.paginate(
             invoice: invoice, theme: theme, pageSize: pageSize,
             page1Overhead: page1Overhead, bottomHeight: bottomH)
 
@@ -85,7 +88,7 @@ extension InvoiceLayoutBuilder {
                         Spacer(height: 10)
                         Text("* \(taxNote)")
                             .font(theme.bodyFont, size: theme.bodyFontSize - 2)
-                            .color(InvoiceLayoutKit.mutedText)
+                            .color(DocumentLayoutKit.mutedText)
                     }
                     if let history = invoice.paymentHistory, !history.isEmpty {
                         Spacer(height: 18)
@@ -100,13 +103,13 @@ extension InvoiceLayoutBuilder {
                     if !InvoiceLayoutKit.isOutstanding(invoice) {
                         Spacer(height: 26)
                         Text(fmt.labels.thankYouNote)
-                            .font(theme.bodyFont, size: InvoiceLayoutKit.receiptThanksSize)
+                            .font(theme.bodyFont, size: DocumentLayoutKit.receiptThanksSize)
                             .bold()
                             .color(PDFColor(white: 0.90))
                     }
                 }
 
-                InvoiceLayoutKit.footer(
+                DocumentLayoutKit.footer(
                     invoice: invoice, theme: theme, fmt: fmt,
                     page: idx + 1, of: plan.pageCount, height: plan.footerHeight,
                     ruleColor: PDFColor(white: 0.82),
@@ -121,14 +124,14 @@ extension InvoiceLayoutBuilder {
     /// Centred logo, centred title, short centred divider — the only centred
     /// part of the document.
     static func receiptMasthead(
-        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: InvoiceFormatter
+        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         Columns(spacing: 0) {
             ColumnItem(width: .flex) {
                 logoOrFallback(supplier: invoice.supplier, theme: theme, alignment: .center)
                 Spacer(height: 10)
                 Text(InvoiceLayoutKit.title(for: invoice, fmt: fmt))
-                    .font(theme.bodyFont, size: InvoiceLayoutKit.receiptTitleSize)
+                    .font(theme.bodyFont, size: DocumentLayoutKit.receiptTitleSize)
                     .bold()
                     .alignment(.center)
                 Spacer(height: 10)
@@ -140,7 +143,7 @@ extension InvoiceLayoutBuilder {
     /// left-aligned, hairline-separated — the customer identity is folded in
     /// here rather than into a party column.
     static func receiptIdentityRows(
-        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: InvoiceFormatter
+        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         let h = invoice.header
         let c = invoice.client
@@ -148,18 +151,21 @@ extension InvoiceLayoutBuilder {
             [fmt.labels.invoiceNumberLabel, h.invoiceNumber],
             [fmt.labels.issueDateLabel, h.issueDate],
         ]
-        if InvoiceLayoutKit.isOutstanding(invoice), let due = h.dueDate {
+        if InvoiceLayoutKit.isOutstanding(invoice), !invoice.hidesSettlement, let due = h.dueDate {
             rows.append([fmt.labels.dueDateLabel, due])
         }
         rows.append([fmt.labels.billToHeader, c.name])
         if let vat = c.vatNumber { rows.append([fmt.labels.vatNumberLabel, vat]) }
+        if let registration = c.registrationNumber {
+            rows.append([fmt.labels.registrationIdLabel, registration])
+        }
         if let ref = h.paymentReference { rows.append([fmt.labels.paymentReferenceLabel, ref]) }
 
         return Columns(spacing: 0) {
             ColumnItem(width: .flex) {
                 HRule(thickness: 0.5, color: PDFColor(white: 0.85))
                 Table(data: rows,
-                      style: InvoiceLayoutKit.hairlineTableStyle(
+                      style: DocumentLayoutKit.hairlineTableStyle(
                         theme: theme, rowHeight: theme.totalsRowHeight + 2, cellBold: false),
                       showHeader: false) {
                     Column("", width: .fixed(200), alignment: .leading)
@@ -173,7 +179,7 @@ extension InvoiceLayoutBuilder {
     /// Line items folded into the same row list: description (+ period) left,
     /// amount right.
     static func receiptLineRows(
-        _ lines: [InvoiceLine], theme: InvoiceTheme, fmt: InvoiceFormatter
+        _ lines: [InvoiceLine], theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         var rows: [[String]] = []
         for line in lines {
@@ -183,7 +189,7 @@ extension InvoiceLayoutBuilder {
         return Columns(spacing: 0) {
             ColumnItem(width: .flex) {
                 Table(data: rows,
-                      style: InvoiceLayoutKit.hairlineTableStyle(
+                      style: DocumentLayoutKit.hairlineTableStyle(
                         theme: theme, rowHeight: theme.totalsRowHeight + 2),
                       showHeader: true) {
                     Column(fmt.labels.columnDescription, width: .flex, alignment: .leading)
@@ -196,22 +202,24 @@ extension InvoiceLayoutBuilder {
     }
 
     static func receiptTotalRows(
-        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: InvoiceFormatter
+        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         let t = invoice.totals
         var rows: [[String]] = [[fmt.labels.subtotalLabel, fmt.money(t.subtotalExcl)]]
         if t.totalVat > 0 { rows.append([fmt.labels.vatLabel, fmt.money(t.totalVat)]) }
         rows.append([fmt.labels.totalLabel, fmt.money(t.totalIncl)])
-        rows.append([
-            InvoiceLayoutKit.isOutstanding(invoice)
-                ? fmt.labels.amountDueLabel : fmt.labels.amountPaidLabel,
-            InvoiceLayoutKit.isOutstanding(invoice)
-                ? fmt.money(t.amountDue) : fmt.money(t.amountPaid ?? t.totalIncl),
-        ])
+        if !invoice.hidesSettlement {
+            rows.append([
+                InvoiceLayoutKit.isOutstanding(invoice)
+                    ? fmt.labels.amountDueLabel : fmt.labels.amountPaidLabel,
+                InvoiceLayoutKit.isOutstanding(invoice)
+                    ? fmt.money(t.amountDue) : fmt.money(t.amountPaid ?? t.totalIncl),
+            ])
+        }
         return Columns(spacing: 0) {
             ColumnItem(width: .flex) {
                 Table(data: rows,
-                      style: InvoiceLayoutKit.hairlineTableStyle(
+                      style: DocumentLayoutKit.hairlineTableStyle(
                         theme: theme, rowHeight: theme.totalsRowHeight + 2, cellBold: true),
                       showHeader: false) {
                     Column("", width: .flex, alignment: .leading)

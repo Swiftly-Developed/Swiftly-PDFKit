@@ -27,20 +27,21 @@ extension InvoiceLayoutBuilder {
         locale: Locale,
         pageSize: PageSize
     ) -> PDF {
-        let fmt = InvoiceFormatter(
+        let fmt = DocumentFormatter(
             theme: theme, locale: locale,
             currencyCode: invoice.header.currency, labels: labels)
 
         let lineH = theme.bodyFontSize * 1.2
         let mastheadH: CGFloat = max(theme.logoMaxHeight,
-                                     InvoiceLayoutKit.classicTitleSize * 1.2) + 16
+                                     DocumentLayoutKit.classicTitleSize * 1.2) + 16
         // The two party columns render side by side, so only the taller counts.
         let partyRows: CGFloat = 9 + (invoice.shipTo != nil ? 6 : 0)
         let partiesH: CGFloat  = partyRows * lineH + 20
         let dateStripH: CGFloat = 2 * lineH + 22
         let page1Overhead = mastheadH + partiesH + dateStripH
 
-        let totalsRows: CGFloat = (invoice.totals.amountPaid ?? 0) > 0 ? 6 : 4
+        let totalsRows: CGFloat = ((invoice.totals.amountPaid ?? 0) > 0 ? 6 : 4)
+            - (invoice.hidesSettlement ? 1 : 0)
         let breakdownN = invoice.taxBreakdown?.count ?? 0
         let historyN   = invoice.paymentHistory?.count ?? 0
         let bottomH: CGFloat =
@@ -50,7 +51,7 @@ extension InvoiceLayoutBuilder {
             + (hasPaymentBlock(invoice) ? 104 : 0)
             + 28
 
-        let plan = InvoiceLayoutKit.paginate(
+        let plan = DocumentLayoutKit.paginate(
             invoice: invoice, theme: theme, pageSize: pageSize,
             page1Overhead: page1Overhead, bottomHeight: bottomH)
 
@@ -91,7 +92,7 @@ extension InvoiceLayoutBuilder {
                     }
                 }
 
-                InvoiceLayoutKit.footer(
+                DocumentLayoutKit.footer(
                     invoice: invoice, theme: theme, fmt: fmt,
                     page: idx + 1, of: plan.pageCount, height: plan.footerHeight,
                     ruleThickness: 2.0)
@@ -103,12 +104,12 @@ extension InvoiceLayoutBuilder {
     // MARK: Sections
 
     static func classicMasthead(
-        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: InvoiceFormatter
+        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         Columns(spacing: 20) {
             ColumnItem(width: .flex) {
                 Text("\(InvoiceLayoutKit.title(for: invoice, fmt: fmt))  \(invoice.header.invoiceNumber)")
-                    .font(theme.bodyFont, size: InvoiceLayoutKit.classicTitleSize)
+                    .font(theme.bodyFont, size: DocumentLayoutKit.classicTitleSize)
                     .bold()
             }
             ColumnItem(width: .fixed(150)) {
@@ -119,7 +120,7 @@ extension InvoiceLayoutBuilder {
 
     /// Small-caps header over a rule, name, address, then the identity grid.
     static func classicParties(
-        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: InvoiceFormatter
+        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         let s = invoice.supplier
         let c = invoice.client
@@ -147,6 +148,7 @@ extension InvoiceLayoutBuilder {
                 Spacer(height: 6)
                 classicIdentityRow(fmt.labels.clientNumberLabel, c.clientNumber, theme: theme)
                 classicIdentityRow(fmt.labels.vatNumberLabel, c.vatNumber, theme: theme)
+                classicIdentityRow(fmt.labels.registrationIdLabel, c.registrationNumber, theme: theme)
                 // Kept per D1 though the CloudTalk reference has no case for
                 // it — drawn in this family's own small-caps grammar rather
                 // than importing Modern's. The mapper suppresses ship-to when
@@ -175,7 +177,7 @@ extension InvoiceLayoutBuilder {
                 Text(text.uppercased())
                     .font(theme.bodyFont, size: theme.bodyFontSize - 1)
                     .bold()
-                    .color(InvoiceLayoutKit.mutedText)
+                    .color(DocumentLayoutKit.mutedText)
                 Spacer(height: 3)
                 HRule(thickness: 0.8, color: PDFColor(white: 0.2))
                 Spacer(height: 6)
@@ -191,7 +193,7 @@ extension InvoiceLayoutBuilder {
                 if value != nil {
                     Text(label)
                         .font(theme.bodyFont, size: theme.bodyFontSize - 1)
-                        .color(InvoiceLayoutKit.mutedText)
+                        .color(DocumentLayoutKit.mutedText)
                 }
             }
             ColumnItem(width: .flex) {
@@ -205,7 +207,7 @@ extension InvoiceLayoutBuilder {
     /// Right-column-only band — measured at ~43% of page width on the
     /// reference, sitting under the CLIENT column, not spanning both parties.
     static func classicDateStrip(
-        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: InvoiceFormatter
+        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         let h = invoice.header
         return Columns(spacing: 0) {
@@ -217,23 +219,25 @@ extension InvoiceLayoutBuilder {
                     ColumnItem(width: .flex) {
                         Text(fmt.labels.issueDateLabel.uppercased())
                             .font(theme.bodyFont, size: theme.bodyFontSize - 2)
-                            .color(InvoiceLayoutKit.mutedText)
+                            .color(DocumentLayoutKit.mutedText)
                         Spacer(height: 3)
                         Text(h.issueDate).font(theme.bodyFont, size: theme.bodyFontSize)
                     }
                     ColumnItem(width: .flex) {
                         Text(fmt.labels.serviceDateLabel.uppercased())
                             .font(theme.bodyFont, size: theme.bodyFontSize - 2)
-                            .color(InvoiceLayoutKit.mutedText)
+                            .color(DocumentLayoutKit.mutedText)
                         Spacer(height: 3)
                         Text(h.serviceDate ?? "—").font(theme.bodyFont, size: theme.bodyFontSize)
                     }
-                    ColumnItem(width: .flex) {
-                        Text(fmt.labels.dueDateLabel.uppercased())
-                            .font(theme.bodyFont, size: theme.bodyFontSize - 2)
-                            .color(InvoiceLayoutKit.mutedText)
-                        Spacer(height: 3)
-                        Text(h.dueDate ?? "—").font(theme.bodyFont, size: theme.bodyFontSize)
+                    if !invoice.hidesSettlement {
+                        ColumnItem(width: .flex) {
+                            Text(fmt.labels.dueDateLabel.uppercased())
+                                .font(theme.bodyFont, size: theme.bodyFontSize - 2)
+                                .color(DocumentLayoutKit.mutedText)
+                            Spacer(height: 3)
+                            Text(h.dueDate ?? "—").font(theme.bodyFont, size: theme.bodyFontSize)
+                        }
                     }
                 }
                 Spacer(height: 4)
@@ -244,7 +248,7 @@ extension InvoiceLayoutBuilder {
 
     /// The wide grid: unit, tax-exclusive and tax-inclusive prices.
     static func classicLineTable(
-        _ lines: [InvoiceLine], theme: InvoiceTheme, fmt: InvoiceFormatter
+        _ lines: [InvoiceLine], theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         var rows: [[String]] = []
         for line in lines {
@@ -272,7 +276,7 @@ extension InvoiceLayoutBuilder {
                 // The fixed columns are held to 320pt so the description keeps
                 // ~195pt, and the whole grid runs a size down from body copy.
                 Table(data: rows,
-                      style: InvoiceLayoutKit.hairlineTableStyle(
+                      style: DocumentLayoutKit.hairlineTableStyle(
                         theme: theme,
                         headerFontSize: theme.tableHeaderFontSize - 3,
                         cellFontSize: theme.tableCellFontSize - 1.5),
@@ -299,7 +303,7 @@ extension InvoiceLayoutBuilder {
     /// NOTE bottom-left, totals bottom-right — the reference puts the
     /// reverse-charge sentence in the note block, not in a footnote.
     static func classicNoteAndTotals(
-        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: InvoiceFormatter
+        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         let t = invoice.totals
         var rows: [[String]] = [[fmt.labels.subtotalLabel, fmt.money(t.subtotalExcl)]]
@@ -311,14 +315,16 @@ extension InvoiceLayoutBuilder {
         if let paid = t.amountPaid, paid > 0 {
             rows.append([fmt.labels.amountPaidLabel, fmt.money(paid)])
         }
-        rows.append([
-            InvoiceLayoutKit.isOutstanding(invoice)
-                ? fmt.labels.amountDueLabel.uppercased()
-                : fmt.labels.amountPaidLabel.uppercased(),
-            InvoiceLayoutKit.isOutstanding(invoice)
-                ? fmt.money(t.amountDue)
-                : fmt.money(t.amountPaid ?? t.totalIncl),
-        ])
+        if !invoice.hidesSettlement {
+            rows.append([
+                InvoiceLayoutKit.isOutstanding(invoice)
+                    ? fmt.labels.amountDueLabel.uppercased()
+                    : fmt.labels.amountPaidLabel.uppercased(),
+                InvoiceLayoutKit.isOutstanding(invoice)
+                    ? fmt.money(t.amountDue)
+                    : fmt.money(t.amountPaid ?? t.totalIncl),
+            ])
+        }
 
         let note = invoice.taxNote ?? invoice.header.notes
         return Columns(spacing: 24) {
@@ -326,16 +332,16 @@ extension InvoiceLayoutBuilder {
                 if let note {
                     Text(fmt.labels.noteHeader.uppercased())
                         .font(theme.bodyFont, size: theme.bodyFontSize - 2)
-                        .color(InvoiceLayoutKit.mutedText)
+                        .color(DocumentLayoutKit.mutedText)
                     Spacer(height: 4)
                     Text(note)
                         .font(theme.bodyFont, size: theme.bodyFontSize - 1)
-                        .color(InvoiceLayoutKit.mutedText)
+                        .color(DocumentLayoutKit.mutedText)
                 }
             }
             ColumnItem(width: .fixed(260)) {
                 Table(data: rows,
-                      style: InvoiceLayoutKit.hairlineTableStyle(
+                      style: DocumentLayoutKit.hairlineTableStyle(
                         theme: theme, rowHeight: theme.totalsRowHeight),
                       showHeader: false) {
                     Column("", width: .flex, alignment: .leading)

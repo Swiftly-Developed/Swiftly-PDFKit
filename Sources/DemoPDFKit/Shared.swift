@@ -227,12 +227,3 @@ func invoicePreview(_ pdf: PDF) -> some View {
     signatureRequired: true,
     signatureLabel: "Received in good order by:"
 )
-
-/// Shipment supplement fixture: DHL carrier + tracking number.
-@MainActor let demoShipmentSupplement = ShipmentSupplement(
-    carrier: "DHL Express",
-    trackingNumber: "1Z999AA10123456784",
-    shipToAddress: "Warehouse BV\nIndustrieweg 88\n9000 Ghent\nBelgium",
-    estimatedDelivery: "2026-02-25",
-    signatureRequired: false
-)

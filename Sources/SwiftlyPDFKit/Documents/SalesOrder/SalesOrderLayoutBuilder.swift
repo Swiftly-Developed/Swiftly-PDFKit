@@ -13,9 +13,10 @@ enum SalesOrderLayoutBuilder {
         invoice: InvoiceDocument,
         supplement: SalesOrderSupplement,
         theme: InvoiceTheme,
+        locale: Locale,
         pageSize: PageSize
     ) -> PDF {
-        let fmt = InvoiceFormatter(theme: theme)
+        let fmt = DocumentFormatter(theme: theme, locale: locale)
 
         // ── Height accounting ──────────────────────────────────────────────
         let rowH:          CGFloat = theme.lineItemRowHeight
@@ -132,12 +133,14 @@ enum SalesOrderLayoutBuilder {
         invoice: InvoiceDocument,
         supplement: SalesOrderSupplement,
         theme: InvoiceTheme,
+        locale: Locale,
         pageSize: PageSize
     ) -> PDF {
         // For the stacked variant we reuse the existing stackedLayout from InvoiceLayoutBuilder
         // since the meta section differences are minor (it just changes the header labels).
         // Build a standalone stacked PDF and return it.
-        return InvoiceLayoutBuilder.stackedLayout(invoice: invoice, theme: theme, pageSize: pageSize)
+        return InvoiceLayoutBuilder.stackedLayout(
+            invoice: invoice, theme: theme, locale: locale, pageSize: pageSize)
     }
 
     // MARK: - Section helpers
@@ -146,7 +149,7 @@ enum SalesOrderLayoutBuilder {
         invoice: InvoiceDocument,
         supplement: SalesOrderSupplement,
         theme: InvoiceTheme,
-        fmt: InvoiceFormatter
+        fmt: DocumentFormatter
     ) -> some PDFContent {
         let h = invoice.header
         return Columns(spacing: 20) {

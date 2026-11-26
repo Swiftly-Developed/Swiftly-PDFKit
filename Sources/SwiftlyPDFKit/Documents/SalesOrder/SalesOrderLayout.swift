@@ -26,21 +26,27 @@ public extension PDF {
     ///   - invoice: The data model (reused from the invoice system).
     ///   - supplement: Sales-order-specific extra fields (PO confirmed date, requested delivery date).
     ///   - theme: Visual configuration. Defaults to ``InvoiceTheme/standard``.
+    ///   - locale: Drives number formatting (amounts, quantities, rates). Defaults
+    ///     to `en_US` (the package-standalone fallback — never the device locale);
+    ///     hosts pass the document's resolved recipient locale.
     ///   - pageSize: Paper size. Defaults to A4.
     init(
         salesOrderLayout: SalesOrderLayoutType,
         invoice: InvoiceDocument,
         supplement: SalesOrderSupplement = SalesOrderSupplement(),
         theme: InvoiceTheme = .standard,
+        locale: Locale = Locale(identifier: "en_US"),
         pageSize: PageSize = .a4
     ) {
         switch salesOrderLayout {
         case .classic:
             self = SalesOrderLayoutBuilder.classicLayout(
-                invoice: invoice, supplement: supplement, theme: theme, pageSize: pageSize)
+                invoice: invoice, supplement: supplement, theme: theme, locale: locale,
+                pageSize: pageSize)
         case .stacked:
             self = SalesOrderLayoutBuilder.stackedLayout(
-                invoice: invoice, supplement: supplement, theme: theme, pageSize: pageSize)
+                invoice: invoice, supplement: supplement, theme: theme, locale: locale,
+                pageSize: pageSize)
         }
     }
 }

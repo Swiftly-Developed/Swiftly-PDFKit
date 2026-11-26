@@ -68,10 +68,22 @@ public struct PDF {
 
     /// Renders and returns the assembled HTML string (useful for debugging/testing).
     public func renderHTML() -> String {
+        renderHTML(bodyZoom: 1)
+    }
+
+    /// Renders the assembled HTML with an optional CSS `zoom` on `<body>`.
+    ///
+    /// `bodyZoom` compensates for an unpatched-Qt `wkhtmltopdf`, which ignores
+    /// `--disable-smart-shrinking` and shrinks the fixed-`pt` page box to ≈0.77 of
+    /// the paper; a zoom inside the measured band makes the fit map the page box
+    /// exactly onto the paper (see `HTMLToPDFConverter.smartShrinkingCompensationZoom`).
+    /// At `1` nothing extra is emitted, so the public `renderHTML()` output is unchanged.
+    func renderHTML(bodyZoom: CGFloat) -> String {
         guard let firstPage = pages.first else { return "" }
 
         let pageWidth = firstPage.size.width
         let pageHeight = firstPage.size.height
+        let bodyZoomCSS = bodyZoom == 1 ? "" : "zoom: \(bodyZoom); "
 
         var pagesHTML = ""
         for page in pages {
@@ -88,7 +100,7 @@ public struct PDF {
             margin: 0;
         }
         * { margin: 0; padding: 0; }
-        body { font-family: Helvetica, Arial, sans-serif; -webkit-print-color-adjust: exact; }
+        body { \(bodyZoomCSS)font-family: Helvetica, Arial, sans-serif; -webkit-print-color-adjust: exact; }
         .page { page-break-after: always; position: relative; overflow: hidden; box-sizing: border-box; }
         .page:last-child { page-break-after: auto; }
         table { border-collapse: collapse; }
@@ -112,7 +124,7 @@ public struct PDF {
 
     #if !canImport(CoreGraphics)
     private func renderViaHTML() throws -> Data {
-        let html = renderHTML()
+        let html = renderHTML(bodyZoom: HTMLToPDFConverter.compensationZoom)
         guard !html.isEmpty, let firstPage = pages.first else {
             throw PDFRenderError.contextCreationFailed
         }

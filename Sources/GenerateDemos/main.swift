@@ -91,14 +91,6 @@ let demoDeliverySupplement = DeliverySupplement(
     signatureLabel: "Received in good order by:"
 )
 
-let demoShipmentSupplement = ShipmentSupplement(
-    carrier: "DHL Express",
-    trackingNumber: "1Z999AA10123456784",
-    shipToAddress: "Warehouse BV\nIndustrieweg 88\n9000 Ghent\nBelgium",
-    estimatedDelivery: "2026-02-25",
-    signatureRequired: false
-)
-
 // MARK: - Generate all demos
 
 print("Generating demos → \(outputDir.path)\n")
@@ -403,18 +395,215 @@ do {
     )
     try write(PDF(deliveryLayout: .standard, invoice: inv14, supplement: demoDeliverySupplement, theme: .standard), name: "Demo14_Delivery.pdf")
 
-    // MARK: Demo 15 — Shipment / standard / corporate
-    let inv15 = InvoiceDocument(
-        header: InvoiceHeader(
-            invoiceNumber: "SHP-2026-001", documentTitle: "Shipment Confirmation",
-            issueDate: "2026-02-19", currency: "EUR",
-            notes: "If you have any questions about your shipment, contact logistics@acme.com."
+    // MARK: Demo 16 — Payment Receipt
+    //
+    // The receipt family has its own model (no lines, no VAT). The widest row
+    // shape: settled / partial (a long, wrapping number) / foreign-currency ("—"
+    // other-payments and remaining) documents, a positive
+    // unallocated remainder, a bank charge, notes, and a reversal with a known
+    // reason code — so the oracle measures a watermarked page.
+    let receipt16 = PaymentReceiptDocument(
+        supplier: demoSupplier,
+        payer: PaymentReceiptPayer(
+            party: InvoiceParty(
+                name: "Client BV", attention: "Jane Doe", street: "Client Road 42",
+                city: "1000 Brussels", country: "Belgium", vatNumber: "BE 0987.654.321"
+            ),
+            registerNumber: "0987.654.321",
+            customerReference: "C-042"
         ),
-        supplier: demoSupplier, client: demoClient, lines: demoShortLines, footer: demoFooter
+        header: PaymentReceiptHeader(receiptNumber: "RCPT-2026-0016", receiptDate: "2026-02-19"),
+        paymentFacts: [
+            PaymentReceiptFact(caption: "Payment date", value: "2026-02-18"),
+            PaymentReceiptFact(caption: "Value date", value: "2026-02-18"),
+            PaymentReceiptFact(caption: "Payment method", value: "SEPA credit transfer"),
+            PaymentReceiptFact(caption: "Bank reference", value: "BNK-2026-88231"),
+        ],
+        allocations: [
+            PaymentReceiptAllocationRow(
+                documentNumber: "INV-2026-001", documentDate: "2026-01-10",
+                documentCurrencyCode: "EUR", documentTotal: 1_210, paidByOtherPayments: 0,
+                appliedAmount: 1_210, remaining: 0, isSettled: true),
+            PaymentReceiptAllocationRow(
+                documentNumber: "INV-2026-ANTWERP-HQ-000004", documentDate: "2026-01-14",
+                documentCurrencyCode: "EUR", documentTotal: 2_420, paidByOtherPayments: 400,
+                appliedAmount: 1_000, remaining: 1_020, isSettled: false),
+            PaymentReceiptAllocationRow(
+                documentNumber: "INV-2026-007", documentDate: "2026-01-20",
+                documentCurrencyCode: "USD", documentTotal: 650, paidByOtherPayments: nil,
+                appliedAmount: 552.60, appliedInDocumentCurrency: 600, exchangeRate: 1.0858,
+                remaining: nil, isSettled: false),
+        ],
+        totals: PaymentReceiptTotals(
+            currencyCode: "EUR", received: 3_000, allocated: 2_762.60, unallocated: 237.40,
+            charges: [PaymentReceiptCharge(amount: 2.50, currencyCode: "EUR")]
+        ),
+        reversal: PaymentReceiptReversal(reasonCode: "MD06"),
+        notes: "The unallocated remainder is held on account against future invoices."
     )
-    try write(PDF(shipmentLayout: .standard, invoice: inv15, supplement: demoShipmentSupplement, theme: .corporate), name: "Demo15_Shipment.pdf")
+    try write(PaymentReceiptLayout.build(receipt16, theme: .standard), name: "Demo16_PaymentReceipt.pdf")
 
-    print("\n15 PDFs written to \(outputDir.path)")
+    // MARK: Demo 17 — Purchase Order
+    //
+    // The purchase-order family has its own model (the issuer is the buyer). A
+    // draft (watermark + the draft placeholder) across the three line kinds —
+    // stock, a service line whose long description wraps with its own
+    // expected-delivery date and a note, an expense — one closed-short line left
+    // off, two VAT rates, a shipping row and instructions. The issuer carries an
+    // IBAN and a BIC; the order prints neither.
+    let poLabels17 = PurchaseOrderLabels.english
+    let purchaseOrder17 = PurchaseOrderDocument(
+        issuer: demoSupplier,
+        vendor: PurchaseOrderDocumentVendor(
+            party: InvoiceParty(
+                name: "Rotterdam Pump Supply BV", street: "Havenweg 12", city: "3011 AB Rotterdam",
+                country: "Netherlands", vatNumber: "NL812345678B01"
+            ),
+            registerNumber: "KvK 12345678",
+            vendorNumber: "V-00042"
+        ),
+        deliverTo: PurchaseOrderDocumentDeliverTo(
+            warehouse: InvoiceParty(
+                name: "Antwerp Central Warehouse", street: "Dokweg 7", city: "2030 Antwerp", country: "Belgium"
+            ),
+            warehouseCode: "WH-ANT",
+            deliveryAddress: "Loading dock 3, Dokweg 7, 2030 Antwerp, Belgium"
+        ),
+        header: PurchaseOrderDocumentHeader(
+            orderNumber: nil, orderDate: "2026-10-26", revision: 1, generatedOn: "2026-10-26 14:05"
+        ),
+        metadataRows: [
+            PurchaseOrderDocumentMetadataRow(caption: poLabels17.requestedByLabel, value: "Jane Doe"),
+            PurchaseOrderDocumentMetadataRow(caption: poLabels17.vendorReferenceLabel, value: "Q-2026-118"),
+            PurchaseOrderDocumentMetadataRow(caption: poLabels17.expectedDeliveryDateLabel, value: "2026-11-15"),
+            PurchaseOrderDocumentMetadataRow(
+                caption: poLabels17.paymentTermsLabel,
+                value: poLabels17.paymentTermsDays(name: "Net 30", days: "30")
+            ),
+            PurchaseOrderDocumentMetadataRow(caption: poLabels17.currencyLabel, value: "EUR"),
+        ],
+        lines: [
+            PurchaseOrderDocumentLine(
+                itemSKU: "PMP-4410", itemName: "Centrifugal pump 4 kW",
+                description: "Stainless steel housing, 400 V three-phase motor",
+                quantity: 2, unitOfMeasure: "pcs", unitCost: 1_250, discountPercent: 5,
+                taxRatePercent: 21, lineTotal: 2_375
+            ),
+            PurchaseOrderDocumentLine(
+                description: "Installation and commissioning on site, including alignment of pump and motor, "
+                    + "a pressure test and a written handover report",
+                quantity: 1, unitCost: 680, taxRatePercent: 21, lineTotal: 680,
+                expectedDelivery: "2026-11-20", note: "Technician to report to the warehouse gate"
+            ),
+            PurchaseOrderDocumentLine(
+                description: "Printed safety documentation (NL / FR)",
+                quantity: 3, unitOfMeasure: "sets", unitCost: 12.5, taxRatePercent: 6, lineTotal: 37.5
+            ),
+        ],
+        closedShortOmittedCount: 1,
+        taxRows: [
+            PurchaseOrderDocumentTaxRow(ratePercent: 21, taxableBase: 3_055, taxAmount: 641.55),
+            PurchaseOrderDocumentTaxRow(ratePercent: 6, taxableBase: 37.5, taxAmount: 2.25),
+        ],
+        totals: PurchaseOrderDocumentTotals(
+            currencyCode: "EUR", subtotal: 3_092.5, discount: nil, shipping: 85, tax: 643.80, total: 3_821.30
+        ),
+        specialInstructions: "Deliver between 08:00 and 16:00. Quote the order number on every delivery note.",
+        watermark: .draft
+    )
+    try write(PurchaseOrderLayout.build(purchaseOrder17, theme: .standard), name: "Demo17_PurchaseOrder.pdf")
+
+    // MARK: Demo 18 — Remittance Advice
+    //
+    // The remittance-advice family has its own model (the issuer is the payer).
+    // A batch not yet submitted (watermark): two member payments settling an
+    // EUR invoice net of a cash discount, a USD invoice paid in EUR (rate
+    // sub-row), an invoice short-paid with an adjustment and a credit note, each
+    // document cell stacking the payee's number, the type, our reference and the
+    // paying member; one EUR totals stack with an on-account remainder; a
+    // remittance text shortened to 140 characters. The issuer's IBAN prints.
+    let raLabels18 = RemittanceAdviceLabels.english
+    let raPayment18 = PaymentReceiptLabels.english
+    let raFullText18 = "Payment of invoices INV-DE-77812 and INV-DE-77840 for September deliveries "
+        + "under framework agreement FA-2026-03, net of the agreed cash discount and the short-delivery adjustment"
+    let remittance18 = RemittanceAdviceDocument(
+        issuer: demoSupplier,
+        payee: RemittanceAdvicePayee(
+            party: InvoiceParty(
+                name: "Bosch Industrial Supply GmbH", street: "Robert-Bosch-Platz 1", city: "70839 Gerlingen",
+                country: "Germany", vatNumber: "DE811128135"
+            ),
+            registerNumber: "HRB 14000",
+            supplierNumber: "V-00017",
+            yourReferenceForUs: "CUST-88213",
+            paidToAccount: "•••• 3000",
+            paidToBIC: "DEUTDEFF"
+        ),
+        header: RemittanceAdviceHeader(
+            batchReference: "MSG-20261028-001 / V-00017", adviceDate: "2026-10-30", generatedOn: "2026-10-28 15:10"
+        ),
+        paymentFacts: [
+            RemittanceAdviceFact(caption: raLabels18.executionDateLabel, value: "2026-10-30"),
+            RemittanceAdviceFact(caption: raPayment18.paymentMethodLabel, value: raPayment18.paymentMeansSEPACreditTransfer),
+            RemittanceAdviceFact(caption: raLabels18.amountPaidLabel, value: "4,312.50 EUR"),
+            RemittanceAdviceFact(caption: raLabels18.ourBankAccountLabel, value: "•••• 9163"),
+        ],
+        memberPayments: [
+            RemittanceAdviceMemberPayment(
+                paymentNumber: "VPMT00041", endToEndId: "E2E-7f3a2c10-55b1-4e0b-9d2a-1c3e",
+                paymentInfoId: "PMTINF-20261030-01", amount: 3_312.50, currencyCode: "EUR"
+            ),
+            RemittanceAdviceMemberPayment(
+                paymentNumber: "VPMT00042", endToEndId: "E2E-0b9e44d2-7a6c-4f21-8e03-a4d1",
+                paymentInfoId: "PMTINF-20261030-01", amount: 1_000, currencyCode: "EUR"
+            ),
+        ],
+        details: [
+            RemittanceAdviceDetailRow(
+                kind: .invoice, theirNumber: "INV-DE-77812", theirDate: "2026-09-15", ourReference: "VBILL00031",
+                documentCurrencyCode: "EUR", gross: 2_500, paidByOtherPayments: 0,
+                applied: 2_450, appliedCurrencyCode: "EUR", remaining: 0, isSettled: true,
+                discount: RemittanceAdviceAmount(value: 50, currencyCode: "EUR"), paidByPaymentNumber: "VPMT00041"
+            ),
+            RemittanceAdviceDetailRow(
+                kind: .invoice, theirNumber: "INV-DE-77840", theirDate: "2026-09-22", ourReference: "VBILL00034",
+                documentCurrencyCode: "USD", gross: 1_000, paidByOtherPayments: 0,
+                applied: 862.50, appliedCurrencyCode: "EUR", appliedInDocumentCurrency: 1_000, exchangeRate: 1.15942,
+                remaining: 0, isSettled: true, paidByPaymentNumber: "VPMT00041"
+            ),
+            RemittanceAdviceDetailRow(
+                kind: .invoice, theirNumber: "INV-DE-77901", theirDate: "2026-10-02", ourReference: "VBILL00040",
+                documentCurrencyCode: "EUR", gross: 1_200, paidByOtherPayments: 0,
+                applied: 1_175, appliedCurrencyCode: "EUR", remaining: 0, isSettled: true,
+                adjustment: RemittanceAdviceAmount(value: 25, currencyCode: "EUR"), adjustmentReason: "Short delivery",
+                paidByPaymentNumber: "VPMT00042"
+            ),
+            RemittanceAdviceDetailRow(
+                kind: .creditNote, theirNumber: "CN-DE-0907", theirDate: "2026-10-05", ourReference: "VCRN00007",
+                documentCurrencyCode: "EUR", gross: 300, paidByOtherPayments: 0,
+                applied: 300, appliedCurrencyCode: "EUR", remaining: 0, isSettled: true,
+                paidByPaymentNumber: "VPMT00042"
+            ),
+        ],
+        totals: [
+            RemittanceAdviceTotals(
+                currencyCode: "EUR", bills: 4_487.50, discount: 50, adjustments: 25, credits: 300,
+                transferred: 4_312.50, onAccount: 125
+            ),
+        ],
+        remittanceLines: [
+            RemittanceAdviceTextLine(
+                text: String(raFullText18.prefix(140)), asSent: true, truncated: true, paymentNumber: "VPMT00041"
+            ),
+            RemittanceAdviceTextLine(text: "RF18 5390 0754 7034", asSent: true, truncated: false, paymentNumber: "VPMT00042"),
+        ],
+        watermark: .notYetSubmitted,
+        notes: "Thank you for the September deliveries.",
+        contactEmail: "accounts@swiftly-demo.example"
+    )
+    try write(RemittanceAdviceLayout.build(remittance18, theme: .standard), name: "Demo18_RemittanceAdvice.pdf")
+
+    print("\n17 PDFs written to \(outputDir.path)")
 
 } catch {
     fputs("Error: \(error)\n", stderr)

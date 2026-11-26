@@ -28,7 +28,7 @@ extension InvoiceLayoutBuilder {
         locale: Locale,
         pageSize: PageSize
     ) -> PDF {
-        let fmt = InvoiceFormatter(
+        let fmt = DocumentFormatter(
             theme: theme, locale: locale,
             currencyCode: invoice.header.currency, labels: labels)
 
@@ -41,19 +41,20 @@ extension InvoiceLayoutBuilder {
         let lineH = theme.bodyFontSize * 1.2
 
         let mastheadH: CGFloat = max(theme.logoMaxHeight,
-                                     InvoiceLayoutKit.modernTitleSize * 1.2) + 14
+                                     DocumentLayoutKit.modernTitleSize * 1.2) + 14
         let metaRows: CGFloat  = 2
-            + (invoice.header.dueDate != nil ? 1 : 0)
+            + (invoice.header.dueDate != nil && !invoice.hidesSettlement ? 1 : 0)
             + (invoice.header.paymentReference != nil ? 1 : 0)
         let metaH: CGFloat     = metaRows * lineH + 16
         // Both party columns render side by side, so only the taller one counts.
         let clientRows: CGFloat = 6 + (invoice.shipTo != nil ? 5 : 0)
         let partiesH: CGFloat   = clientRows * lineH + 18
-        let headlineH: CGFloat  = invoice.paymentState != nil
-            ? InvoiceLayoutKit.modernHeadlineSize * 1.2 + 18 : 0
+        let headlineH: CGFloat  = invoice.paymentState != nil && !invoice.hidesSettlement
+            ? DocumentLayoutKit.modernHeadlineSize * 1.2 + 18 : 0
         let page1Overhead       = mastheadH + metaH + partiesH + headlineH
 
-        let totalsRows: CGFloat = (invoice.totals.amountPaid ?? 0) > 0 ? 5 : 4
+        let totalsRows: CGFloat = ((invoice.totals.amountPaid ?? 0) > 0 ? 5 : 4)
+            - (invoice.hidesSettlement ? 1 : 0)
         let breakdownN          = invoice.taxBreakdown?.count ?? 0
         let historyN            = invoice.paymentHistory?.count ?? 0
         let bottomH: CGFloat =
@@ -72,7 +73,7 @@ extension InvoiceLayoutBuilder {
             // early rather than late.
             + 28
 
-        let plan = InvoiceLayoutKit.paginate(
+        let plan = DocumentLayoutKit.paginate(
             invoice: invoice, theme: theme, pageSize: pageSize,
             page1Overhead: page1Overhead, bottomHeight: bottomH)
         _ = rowH
@@ -95,7 +96,7 @@ extension InvoiceLayoutBuilder {
                     Spacer(height: 16)
                     modernParties(invoice: invoice, theme: theme, fmt: fmt)
                     Spacer(height: 18)
-                    if let state = invoice.paymentState {
+                    if let state = invoice.paymentState, !invoice.hidesSettlement {
                         modernHeadline(state: state, invoice: invoice, theme: theme, fmt: fmt)
                         Spacer(height: 18)
                     }
@@ -117,13 +118,13 @@ extension InvoiceLayoutBuilder {
                         Spacer(height: 10)
                         Text("[1] \(taxNote)")
                             .font(theme.bodyFont, size: theme.bodyFontSize - 2)
-                            .color(InvoiceLayoutKit.mutedText)
+                            .color(DocumentLayoutKit.mutedText)
                     }
                     if let notes = invoice.header.notes {
                         Spacer(height: 12)
                         Text(notes)
                             .font(theme.bodyFont, size: theme.bodyFontSize - 1)
-                            .color(InvoiceLayoutKit.mutedText)
+                            .color(DocumentLayoutKit.mutedText)
                     }
                     // Only when rows exist: Slack is a paid sample with no
                     // history table at all, so an unconditional table would
@@ -139,7 +140,7 @@ extension InvoiceLayoutBuilder {
                     }
                 }
 
-                InvoiceLayoutKit.footer(
+                DocumentLayoutKit.footer(
                     invoice: invoice, theme: theme, fmt: fmt,
                     page: idx + 1, of: plan.pageCount, height: plan.footerHeight,
                     ruleColor: PDFColor(white: 0.82))
@@ -152,12 +153,12 @@ extension InvoiceLayoutBuilder {
 
     /// Title flush left, logo optically opposite.
     static func modernMasthead(
-        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: InvoiceFormatter
+        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         Columns(spacing: 20) {
             ColumnItem(width: .flex) {
                 Text(InvoiceLayoutKit.title(for: invoice, fmt: fmt))
-                    .font(theme.bodyFont, size: InvoiceLayoutKit.modernTitleSize)
+                    .font(theme.bodyFont, size: DocumentLayoutKit.modernTitleSize)
                     .bold()
             }
             ColumnItem(width: .fixed(150)) {
@@ -168,7 +169,7 @@ extension InvoiceLayoutBuilder {
 
     /// Bold labels in a narrow left column, values aligned in a second.
     static func modernMeta(
-        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: InvoiceFormatter
+        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         let h = invoice.header
         let isPaid: Bool = { if case .paid = invoice.paymentState { return true }; return false }()
@@ -178,7 +179,7 @@ extension InvoiceLayoutBuilder {
                     .font(theme.bodyFont, size: theme.bodyFontSize).bold()
                 Text(fmt.labels.issueDateLabel)
                     .font(theme.bodyFont, size: theme.bodyFontSize).bold()
-                if h.dueDate != nil && !isPaid {
+                if h.dueDate != nil && !isPaid && !invoice.hidesSettlement {
                     Text(fmt.labels.dueDateLabel)
                         .font(theme.bodyFont, size: theme.bodyFontSize).bold()
                 }
@@ -190,7 +191,7 @@ extension InvoiceLayoutBuilder {
             ColumnItem(width: .flex) {
                 Text(h.invoiceNumber).font(theme.bodyFont, size: theme.bodyFontSize)
                 Text(h.issueDate).font(theme.bodyFont, size: theme.bodyFontSize)
-                if let due = h.dueDate, !isPaid {
+                if let due = h.dueDate, !isPaid, !invoice.hidesSettlement {
                     Text(due).font(theme.bodyFont, size: theme.bodyFontSize)
                 }
                 if let ref = h.paymentReference {
@@ -203,7 +204,7 @@ extension InvoiceLayoutBuilder {
     /// Supplier left, Bill-to right; Ship-to under Bill-to only when it differs
     /// (the mapper suppresses it when equal, so its presence *is* the signal).
     static func modernParties(
-        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: InvoiceFormatter
+        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         Columns(spacing: 24) {
             ColumnItem(width: .flex) {
@@ -222,7 +223,7 @@ extension InvoiceLayoutBuilder {
     /// The loudest element after the title.
     static func modernHeadline(
         state: InvoicePaymentState, invoice: InvoiceDocument,
-        theme: InvoiceTheme, fmt: InvoiceFormatter
+        theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         let headline: String
         switch state {
@@ -233,13 +234,13 @@ extension InvoiceLayoutBuilder {
                 amount: fmt.money(invoice.totals.amountDue), date: fmt.date(date))
         }
         return Text(headline)
-            .font(theme.bodyFont, size: InvoiceLayoutKit.modernHeadlineSize)
+            .font(theme.bodyFont, size: DocumentLayoutKit.modernHeadlineSize)
             .bold()
     }
 
     /// Hairline above and below the header row; no fills, no vertical rules.
     static func modernLineTable(
-        _ lines: [InvoiceLine], theme: InvoiceTheme, fmt: InvoiceFormatter
+        _ lines: [InvoiceLine], theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         let anyTax = lines.contains { $0.vatRate > 0 } || lines.contains { $0.vatRate == 0 }
         // Table cells are single-line: a "\n" renders literally. The
@@ -262,7 +263,7 @@ extension InvoiceLayoutBuilder {
             ColumnItem(width: .flex) {
                 HRule(thickness: 0.8, color: PDFColor(white: 0.15))
                 Table(data: rows,
-                      style: InvoiceLayoutKit.hairlineTableStyle(theme: theme),
+                      style: DocumentLayoutKit.hairlineTableStyle(theme: theme),
                       showHeader: true) {
                     Column(fmt.labels.columnDescription, width: .flex, alignment: .leading)
                     Column(fmt.labels.columnQuantity, width: .fixed(45),
@@ -281,7 +282,7 @@ extension InvoiceLayoutBuilder {
 
     /// Right-half stack, hairline between rows, bold final row.
     static func modernTotals(
-        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: InvoiceFormatter
+        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         let t = invoice.totals
         var rows: [[String]] = [[fmt.labels.subtotalLabel, fmt.money(t.subtotalExcl)]]
@@ -299,13 +300,15 @@ extension InvoiceLayoutBuilder {
             ? fmt.labels.amountDueLabel : fmt.labels.amountPaidLabel
         let closingValue: String = InvoiceLayoutKit.isOutstanding(invoice)
             ? fmt.money(t.amountDue) : fmt.money(t.amountPaid ?? t.totalIncl)
-        rows.append([closing, closingValue])
+        if !invoice.hidesSettlement {
+            rows.append([closing, closingValue])
+        }
 
         return Columns(spacing: 0) {
             ColumnItem(width: .flex) { Spacer(height: 1) }
             ColumnItem(width: .fixed(280)) {
                 Table(data: rows,
-                      style: InvoiceLayoutKit.hairlineTableStyle(
+                      style: DocumentLayoutKit.hairlineTableStyle(
                         theme: theme, rowHeight: theme.totalsRowHeight),
                       showHeader: false) {
                     Column("", width: .flex, alignment: .leading)
@@ -318,7 +321,7 @@ extension InvoiceLayoutBuilder {
     /// Kept though no reference has one (D1) — rendered in the same hairline
     /// grammar so it reads as part of the family.
     static func modernTaxBreakdown(
-        _ breakdown: [InvoiceTaxSubtotal], theme: InvoiceTheme, fmt: InvoiceFormatter
+        _ breakdown: [InvoiceTaxSubtotal], theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         let rows = breakdown.map { r in
             [fmt.percent(r.ratePercent), fmt.money(r.taxableBase),
@@ -331,7 +334,7 @@ extension InvoiceLayoutBuilder {
                 Spacer(height: 6)
                 HRule(thickness: 0.8, color: PDFColor(white: 0.15))
                 Table(data: rows,
-                      style: InvoiceLayoutKit.hairlineTableStyle(
+                      style: DocumentLayoutKit.hairlineTableStyle(
                         theme: theme, rowHeight: theme.totalsRowHeight),
                       showHeader: true) {
                     Column(fmt.labels.columnTaxRate, width: .fixed(70), alignment: .trailing,
@@ -348,7 +351,7 @@ extension InvoiceLayoutBuilder {
     }
 
     static func modernPaymentHistory(
-        _ history: [InvoicePaymentRow], theme: InvoiceTheme, fmt: InvoiceFormatter
+        _ history: [InvoicePaymentRow], theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         let rows = history.map { r in
             [r.method, fmt.date(r.date), fmt.money(r.amount), r.receiptNumber ?? ""]
@@ -356,11 +359,11 @@ extension InvoiceLayoutBuilder {
         return Columns(spacing: 0) {
             ColumnItem(width: .flex) {
                 Text(fmt.labels.paymentHistoryHeader)
-                    .font(theme.bodyFont, size: InvoiceLayoutKit.modernSectionSize).bold()
+                    .font(theme.bodyFont, size: DocumentLayoutKit.modernSectionSize).bold()
                 Spacer(height: 8)
                 HRule(thickness: 0.8, color: PDFColor(white: 0.15))
                 Table(data: rows,
-                      style: InvoiceLayoutKit.hairlineTableStyle(
+                      style: DocumentLayoutKit.hairlineTableStyle(
                         theme: theme, rowHeight: theme.totalsRowHeight),
                       showHeader: true) {
                     Column(fmt.labels.columnPaymentMethod, width: .flex, alignment: .leading)
@@ -378,7 +381,7 @@ extension InvoiceLayoutBuilder {
 
     /// IBAN / BIC / structured reference, with the EPC QR when one was mapped.
     static func modernPaymentBlock(
-        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: InvoiceFormatter
+        invoice: InvoiceDocument, theme: InvoiceTheme, fmt: DocumentFormatter
     ) -> some PDFContent {
         let s = invoice.supplier
         return Columns(spacing: 16) {
@@ -409,7 +412,7 @@ extension InvoiceLayoutBuilder {
     /// A payment block is worth drawing only when the document is unpaid and
     /// there is something payable to show.
     static func hasPaymentBlock(_ invoice: InvoiceDocument) -> Bool {
-        guard InvoiceLayoutKit.isOutstanding(invoice) else { return false }
+        guard InvoiceLayoutKit.isOutstanding(invoice), !invoice.hidesSettlement else { return false }
         return invoice.supplier.iban != nil
             || invoice.header.paymentReference != nil
             || invoice.header.qrPayload != nil

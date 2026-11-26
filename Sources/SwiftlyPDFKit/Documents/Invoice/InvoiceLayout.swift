@@ -36,7 +36,7 @@ public extension PDF {
     ///   - theme: Visual configuration (colors, fonts, logo size). Defaults to ``InvoiceTheme/standard``.
     ///   - labels: Every fixed rendered string. Defaults to ``InvoiceLabels/english``;
     ///     hosts supply a localized instance.
-    ///   - locale: Drives date and currency formatting. Defaults to `en_US`
+    ///   - locale: Drives date, currency, number and rate formatting. Defaults to `en_US`
     ///     (the package-standalone fallback — never the device locale);
     ///     hosts pass the document's resolved locale.
     ///   - pageSize: Paper size. Defaults to A4.

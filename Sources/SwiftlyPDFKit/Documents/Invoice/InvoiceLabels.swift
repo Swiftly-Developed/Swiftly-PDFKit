@@ -290,3 +290,11 @@ public struct InvoiceLabels: Sendable {
             .replacingOccurrences(of: "{date}", with: date)
     }
 }
+
+// MARK: - LabelSet conformance
+
+/// Additive only — ``InvoiceLabels`` already declares `pageNumber(_:of:)` with
+/// exactly the required signature and is already `Sendable`, so the conformance
+/// adds no public surface. This type has consumers outside the package; nothing
+/// about its stored members or its `public init` may change here.
+extension InvoiceLabels: LabelSet {}

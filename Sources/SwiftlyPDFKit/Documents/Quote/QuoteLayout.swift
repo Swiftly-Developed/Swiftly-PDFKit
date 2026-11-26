@@ -27,21 +27,27 @@ public extension PDF {
     ///   - invoice: The data model (reused from the invoice system).
     ///   - supplement: Quote-specific extra fields.
     ///   - theme: Visual configuration. Defaults to ``InvoiceTheme/standard``.
+    ///   - locale: Drives number formatting (amounts, quantities, rates). Defaults
+    ///     to `en_US` (the package-standalone fallback — never the device locale);
+    ///     hosts pass the document's resolved recipient locale.
     ///   - pageSize: Paper size. Defaults to A4.
     init(
         quoteLayout: QuoteLayoutType,
         invoice: InvoiceDocument,
         supplement: QuoteSupplement = QuoteSupplement(),
         theme: InvoiceTheme = .standard,
+        locale: Locale = Locale(identifier: "en_US"),
         pageSize: PageSize = .a4
     ) {
         switch quoteLayout {
         case .classic:
             self = QuoteLayoutBuilder.classicLayout(
-                invoice: invoice, supplement: supplement, theme: theme, pageSize: pageSize)
+                invoice: invoice, supplement: supplement, theme: theme, locale: locale,
+                pageSize: pageSize)
         case .minimal:
             self = QuoteLayoutBuilder.minimalLayout(
-                invoice: invoice, supplement: supplement, theme: theme, pageSize: pageSize)
+                invoice: invoice, supplement: supplement, theme: theme, locale: locale,
+                pageSize: pageSize)
         }
     }
 }

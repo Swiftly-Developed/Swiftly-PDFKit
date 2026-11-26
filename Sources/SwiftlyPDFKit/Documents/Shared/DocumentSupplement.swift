@@ -51,37 +51,3 @@ public struct DeliverySupplement: Sendable {
         self.signatureLabel = signatureLabel
     }
 }
-
-// MARK: - ShipmentSupplement
-
-/// Extra fields specific to shipment confirmation / dispatch advice documents.
-public struct ShipmentSupplement: Sendable {
-    /// Carrier name (e.g. "DHL Express").
-    public var carrier: String?
-    /// Carrier tracking number or reference.
-    public var trackingNumber: String?
-    /// Full multiline ship-to address (newline-separated).
-    public var shipToAddress: String?
-    /// Estimated delivery date string (e.g. "2026-02-25").
-    public var estimatedDelivery: String?
-    /// When true a signature confirmation block is rendered on the last page.
-    public var signatureRequired: Bool
-    /// Label shown above the signature line.
-    public var signatureLabel: String
-
-    public init(
-        carrier: String? = nil,
-        trackingNumber: String? = nil,
-        shipToAddress: String? = nil,
-        estimatedDelivery: String? = nil,
-        signatureRequired: Bool = false,
-        signatureLabel: String = "Signature on delivery:"
-    ) {
-        self.carrier = carrier
-        self.trackingNumber = trackingNumber
-        self.shipToAddress = shipToAddress
-        self.estimatedDelivery = estimatedDelivery
-        self.signatureRequired = signatureRequired
-        self.signatureLabel = signatureLabel
-    }
-}
